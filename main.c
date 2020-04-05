@@ -700,7 +700,7 @@ flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircr
 {
     double dtmin = 1e-8;
     double dtmax = 1e-2;
-    double tol = 5e-12;
+    double tol = 5e-14;
 
     struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_lin_forces, ac, controller, ss);
     integrator_set_type(ode,"rkf45");
