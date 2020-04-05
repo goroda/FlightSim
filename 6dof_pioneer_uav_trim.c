@@ -606,16 +606,16 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "Optimizer result = %d\nObjective value = %3.5E\n", ss->res, ss->obj_val);    
 
     fprintf(fp, "\n\n\n");
-    fprintf(fp, "Spec      :         Targets          Achieved\n");
-    fprintf(fp, "-----------------------------------------------\n");    
+    fprintf(fp, "Spec                :        Targets          Achieved   \n");
+    fprintf(fp, "---------------------------------------------------------\n");    
     fprintf(fp, "Speed       (ft/s)  :       %3.5E      %3.5E\n", ss->target_speed, ss->achieved_speed);
-    fprintf(fp, "-Climb-rate (ft/s)  :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
+    fprintf(fp, "-Climb Rate (ft/s)  :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
     fprintf(fp, "Yaw Rate    (rad/s) :       %3.5E      %3.5E\n", ss->target_yaw_rate, ss->achieved_yaw_rate);
 
         
     fprintf(fp, "\n\n\n");
-    fprintf(fp, "State      : \t      x \t     dx   \t       x  (secondary unit)\n");
-    fprintf(fp, "-----------------------------------------------------------------------------------\n");
+    fprintf(fp, "State             :       x               dx   \t \tx (secondary unit)\n");
+    fprintf(fp, "------------------------------------------------------------------------------\n");
     fprintf(fp, "U     (ft/s)      :  %3.5E     %3.5E\n", ss->UVW.v1, ss->dUVW.v1);
     fprintf(fp, "V     (ft/s)      :  %3.5E     %3.5E\n", ss->UVW.v2, ss->dUVW.v2);
     fprintf(fp, "W     (ft/s)      :  %3.5E     %3.5E\n", ss->UVW.v3, ss->dUVW.v3);
@@ -627,7 +627,7 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
 
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Input :\n");
-    fprintf(fp, "---------------------------------------------\n");
+    fprintf(fp, "---------------------------------------------------------------\n");
     fprintf(fp, "Elevator (rad,deg) :   %3.5E \t %3.5E\n", ss->aero_con.v1, rad2deg(ss->aero_con.v1));
     fprintf(fp, "Aileron  (rad,deg) :   %3.5E \t %3.5E\n", ss->aero_con.v2, rad2deg(ss->aero_con.v2));
     fprintf(fp, "Rudder   (rad,deg) :   %3.5E \t %3.5E\n", ss->aero_con.v3, rad2deg(ss->aero_con.v3));
@@ -635,12 +635,12 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
 
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Derived Quantities :\n");
-    fprintf(fp, "---------------------------------------------\n");
+    fprintf(fp, "---------------------------------------------------------------\n");
     fprintf(fp, "Angle of Attack (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.aoa, rad2deg(ss->aero.aoa));
     fprintf(fp, "Sideslip Angle  (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.sideslip, rad2deg(ss->aero.sideslip));
 
     fprintf(fp, "\n");
-    fprintf(fp, "========================================================\n");
+    fprintf(fp, "===============================================================\n");
     fprintf(fp, "\n");
     
     return 0;
