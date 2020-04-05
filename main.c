@@ -594,6 +594,8 @@ struct SteadyState
     real sideslip;
 };
 
+inline real rad2deg(real ang) { return ang / M_PI * 180; }
+
 int steady_state_print(FILE * fp, const struct SteadyState * ss)
 {
     fprintf(fp, "\n");
@@ -606,36 +608,36 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Spec      :         Targets          Achieved\n");
     fprintf(fp, "-----------------------------------------------\n");    
-    fprintf(fp, "Speed      :       %3.5E      %3.5E\n", ss->target_speed, ss->achieved_speed);
-    fprintf(fp, "Climb-rate :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
-    fprintf(fp, "Yaw Rate   :       %3.5E      %3.5E\n", ss->target_yaw_rate, ss->achieved_yaw_rate);
+    fprintf(fp, "Speed       (ft/s)  :       %3.5E      %3.5E\n", ss->target_speed, ss->achieved_speed);
+    fprintf(fp, "-Climb-rate (ft/s)  :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
+    fprintf(fp, "Yaw Rate    (rad/s) :       %3.5E      %3.5E\n", ss->target_yaw_rate, ss->achieved_yaw_rate);
 
         
     fprintf(fp, "\n\n\n");
-    fprintf(fp, "State      : \t      x \t     dx   \n");
-    fprintf(fp, "--------------------------------------------\n");
-    fprintf(fp, "U (ft/s)   : \t %3.5E \t %3.5E\n", ss->UVW.v1, ss->dUVW.v1);
-    fprintf(fp, "V (ft/s)   : \t %3.5E \t %3.5E\n", ss->UVW.v2, ss->dUVW.v2);
-    fprintf(fp, "W (ft/s)   : \t %3.5E \t %3.5E\n", ss->UVW.v3, ss->dUVW.v3);
-    fprintf(fp, "P (rad/s)  : \t %3.5E \t %3.5E\n", ss->PQR.v1, ss->dPQR.v1);
-    fprintf(fp, "Q (rad/s)  : \t %3.5E \t %3.5E\n", ss->PQR.v2, ss->dPQR.v2);
-    fprintf(fp, "R (rad/s)  : \t %3.5E \t %3.5E\n", ss->PQR.v3, ss->dPQR.v3);
-    fprintf(fp, "Roll (rad) : \t %3.5E \t %3.5E\n", ss->roll, ss->droll);
-    fprintf(fp, "Pitch (rad): \t %3.5E \t %3.5E\n", ss->pitch, ss->dpitch);
+    fprintf(fp, "State      : \t      x \t     dx   \t       x  (secondary unit)\n");
+    fprintf(fp, "-----------------------------------------------------------------------------------\n");
+    fprintf(fp, "U     (ft/s)      :  %3.5E     %3.5E\n", ss->UVW.v1, ss->dUVW.v1);
+    fprintf(fp, "V     (ft/s)      :  %3.5E     %3.5E\n", ss->UVW.v2, ss->dUVW.v2);
+    fprintf(fp, "W     (ft/s)      :  %3.5E     %3.5E\n", ss->UVW.v3, ss->dUVW.v3);
+    fprintf(fp, "P     (rad,deg/s) :  %3.5E     %3.5E \t %3.5E\n", ss->PQR.v1, ss->dPQR.v1, rad2deg(ss->PQR.v1));
+    fprintf(fp, "Q     (rad,deg/s) :  %3.5E     %3.5E \t %3.5E\n", ss->PQR.v2, ss->dPQR.v2, rad2deg(ss->PQR.v2));
+    fprintf(fp, "R     (rad,deg/s) :  %3.5E     %3.5E \t %3.5E\n", ss->PQR.v3, ss->dPQR.v3, rad2deg(ss->PQR.v3));
+    fprintf(fp, "Roll  (rad,deg)   :  %3.5E     %3.5E \t %3.5E\n", ss->roll, ss->droll, rad2deg(ss->roll));
+    fprintf(fp, "Pitch (rad,deg)   :  %3.5E     %3.5E \t %3.5E\n", ss->pitch, ss->dpitch, rad2deg(ss->pitch));
 
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Input :\n");
     fprintf(fp, "---------------------------------------------\n");
-    fprintf(fp, "Elevator (rad)     : \t %3.5E\n", ss->aero_con.v1);
-    fprintf(fp, "Aileron  (rad)     : \t %3.5E\n", ss->aero_con.v2);
-    fprintf(fp, "Rudder   (rad)     : \t %3.5E\n", ss->aero_con.v3);
-    fprintf(fp, "Thrust   (lb-slug) : \t %3.5E\n", ss->thrust);
+    fprintf(fp, "Elevator (rad,deg) :   %3.5E \t %3.5E\n", ss->aero_con.v1, rad2deg(ss->aero_con.v1));
+    fprintf(fp, "Aileron  (rad,deg) :   %3.5E \t %3.5E\n", ss->aero_con.v2, rad2deg(ss->aero_con.v2));
+    fprintf(fp, "Rudder   (rad,deg) :   %3.5E \t %3.5E\n", ss->aero_con.v3, rad2deg(ss->aero_con.v3));
+    fprintf(fp, "Thrust   (lb-slug) :   %3.5E\n", ss->thrust);
 
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Derived Quantities :\n");
     fprintf(fp, "---------------------------------------------\n");
-    fprintf(fp, "Angle of Attack (rad)     : \t %3.5E\n", ss->aero.aoa);
-    fprintf(fp, "Sideslip Angle  (rad)     : \t %3.5E\n", ss->aero.sideslip);
+    fprintf(fp, "Angle of Attack (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.aoa, rad2deg(ss->aero.aoa));
+    fprintf(fp, "Sideslip Angle  (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.sideslip, rad2deg(ss->aero.sideslip));
 
     fprintf(fp, "\n");
     fprintf(fp, "========================================================\n");
