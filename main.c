@@ -587,7 +587,8 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "========================================================\n");
     fprintf(fp, "                        TRIM RESULT                     \n");
     fprintf(fp, "========================================================\n");
-    fprintf(fp, "Optimizer result = %d\nObjective value = %3.5E\n", ss->res, ss->obj_val);
+    /* fprintf(fp, "Optimizer result = %c\nObjective value = %3.5E\n", nlopt_result_to_string(ss->res), ss->obj_val);*/
+    fprintf(fp, "Optimizer result = %d\nObjective value = %3.5E\n", ss->res, ss->obj_val);    
     
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Steady-state state values\n");
@@ -636,6 +637,8 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     opt = nlopt_create(NLOPT_LN_NEWUOA, 12);
     nlopt_set_ftol_rel(opt, -1.0);
     nlopt_set_ftol_abs(opt, 0.0);
+    nlopt_set_xtol_abs1(opt, 1e-20);
+    
     nlopt_set_min_objective(opt, trim_objective, data);
 
     // no sideslip
@@ -698,14 +701,15 @@ struct Trajectory *
 flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircraft * ac,
               double dt_save, size_t nsteps)
 {
-    double dtmin = 1e-8;
-    double dtmax = 1e-2;
-    double tol = 5e-14;
+    /* double dtmin = 1e-16; */
+    /* double dtmax = dt_save; */
+    /* double tol = 1e-14; */
 
     struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_lin_forces, ac, controller, ss);
-    integrator_set_type(ode,"rkf45");
-    /* integrator_set_dt(ode, 1e-4); */
-    integrator_set_adaptive_opts(ode, dtmin, dtmax, tol);
+    integrator_set_type(ode, "rk4");
+    integrator_set_dt(ode, 1e-4);
+    /* integrator_set_type(ode,"rkf45");     */
+    /* integrator_set_adaptive_opts(ode, dtmin, dtmax, tol); */
     integrator_set_verbose(ode, 0);
     
 
@@ -750,8 +754,8 @@ int main(int argc, char* argv[]){
     pioneer_uav(&aircraft);
     struct TrimSpec trim_spec;
     trim_spec.z_dot = 0.0;
-    trim_spec.yaw_dot = 3 * 2.0 * M_PI / 500;
-    trim_spec.target_vel = 120; // ft/s
+    trim_spec.yaw_dot = 0.0 * 3.0 * 2.0 * M_PI / 500.0;
+    trim_spec.target_vel = 120.0; // ft/s
     trim_spec.ac = &aircraft;
 
     struct SteadyState ss;
