@@ -19,61 +19,59 @@ make all
 Currently, this code implements a 6DOF rigid body model under no wind conditions. Linear aerodynamic coefficient models are used to calculate the forces and moments.
 
 ## Example Usage
-There is currently only a single script called ~ac_trim~. This script allows for computing the trim conditions for steady trimmed flight. To see what the script does you can give the help flag <kbd> ./ac_trim -h </kbd>
+There is currently only a single script called <kbd> ac_trim </kbd>. This script allows for computing the trim conditions for steady trimmed flight. To see what the script does you can give the help flag <kbd> ./ac_trim -h </kbd>
 
 Here is sample output for steady flight at a speed of 120 ft/s with a 10 ft/s straight climb rate.
 
 
 
 ``` shell
-Alexs-MacBook-Air:flight_sim_c alex$ ./ac_trim -s 120 -c -10 -y 0 
-
+Alexs-MacBook-Air:flight_sim_c alex$ ./ac_trim -s 120 -c 10 -y 0
 
 ========================================================
                         TRIM RESULT                     
 ========================================================
 Optimizer result = 4
-Objective value = 8.87054E-20
+Objective value = 2.21131E-18
 
 
 
-Spec      :         Targets          Achieved
------------------------------------------------
+Spec                :        Targets          Achieved   
+---------------------------------------------------------
 Speed       (ft/s)  :       1.20000E+02      1.20000E+02
--Climb-rate (ft/s)  :       -1.00000E+01      -1.00000E+01
-Yaw Rate    (rad/s) :       0.00000E+00      2.39908E-12
+-Climb Rate (ft/s)  :       1.00000E+01      1.00000E+01
+Yaw Rate    (rad/s) :       0.00000E+00      -2.15110E-11
 
 
 
-State      : 	      x 	     dx   	       x  (secondary unit)
------------------------------------------------------------------------------------
-U     (ft/s)      :  1.19576E+02     -2.78932E-11
-V     (ft/s)      :  0.00000E+00     4.43692E-14
-W     (ft/s)      :  1.00772E+01     8.17124E-14
-P     (rad,deg/s) :  -1.47887E-12     7.11748E-14 	 -8.47330E-11
-Q     (rad,deg/s) :  -2.96373E-10     8.84997E-14 	 -1.69809E-08
-R     (rad,deg/s) :  2.36550E-12     3.40649E-13 	 1.35533E-10
-Roll  (rad,deg)   :  9.38861E-12     -1.07889E-12 	 5.37928E-10
-Pitch (rad,deg)   :  1.67506E-01     -2.96373E-10 	 9.59739E+00
+State             :       x               dx   	 	x (secondary unit)
+------------------------------------------------------------------------------
+U     (ft/s)      :  1.19550E+02     -9.20912E-11
+V     (ft/s)      :  0.00000E+00     -2.95861E-13
+W     (ft/s)      :  1.03883E+01     4.40181E-12
+P     (rad,deg/s) :  -7.71925E-13     2.50677E-13 	 -4.42281E-11
+Q     (rad,deg/s) :  -1.48382E-09     -2.75975E-12 	 -8.50166E-08
+R     (rad,deg/s) :  -2.15108E-11     2.22293E-13 	 -1.23248E-09
+Roll  (rad,deg)   :  -7.96985E-11     -8.41775E-13 	 -4.56639E-09
+Pitch (rad,deg)   :  3.24720E-03     -1.48382E-09 	 1.86051E-01
 
 
 
 Input :
----------------------------------------------
-Elevator (rad,deg) :   8.95386E-03 	 5.13019E-01
-Aileron  (rad,deg) :   5.64446E-13 	 3.23403E-11
-Rudder   (rad,deg) :   -1.50416E-13 	 -8.61823E-12
-Thrust   (lb-slug) :   8.36081E+01
+---------------------------------------------------------------
+Elevator (rad,deg) :   5.82054E-03 	 3.33493E-01
+Aileron  (rad,deg) :   -2.38835E-12 	 -1.36842E-10
+Rudder   (rad,deg) :   2.82377E-12 	 1.61790E-10
+Thrust   (lb-slug) :   1.38872E+01
 
 
 
 Derived Quantities :
----------------------------------------------
-Angle of Attack (rad,deg) :   8.40760E-02 	 4.81720E+00
+---------------------------------------------------------------
+Angle of Attack (rad,deg) :   8.66773E-02 	 4.96624E+00
 Sideslip Angle  (rad,deg) :   0.00000E+00 	 0.00000E+00
 
-========================================================
-
+===============================================================
 ```
 
 ## Acknowledgements
