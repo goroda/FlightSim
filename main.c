@@ -3,6 +3,7 @@
 #include <math.h>
 #include <assert.h>
 #include <time.h>
+#include <getopt.h>
 
 #include <cdyn/integrate.h>
 #include <cdyn/simulate.h>
@@ -576,8 +577,9 @@ double trim_objective(unsigned n, const double * x, double * grad, void * f_data
 struct SteadyState
 {
     struct Vec3 UVW, dUVW;
+    struct AeroAngles aero;
     struct Vec3 PQR, dPQR;
-    struct Vec3 aero_con;
+    struct Vec3 aero_con;    
     real roll, droll, pitch, dpitch;
     real thrust;
 
@@ -629,6 +631,12 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "Rudder   (rad)     : \t %3.5E\n", ss->aero_con.v3);
     fprintf(fp, "Thrust   (lb-slug) : \t %3.5E\n", ss->thrust);
 
+    fprintf(fp, "\n\n\n");
+    fprintf(fp, "Derived Quantities :\n");
+    fprintf(fp, "---------------------------------------------\n");
+    fprintf(fp, "Angle of Attack (rad)     : \t %3.5E\n", ss->aero.aoa);
+    fprintf(fp, "Sideslip Angle  (rad)     : \t %3.5E\n", ss->aero.sideslip);
+
     fprintf(fp, "\n");
     fprintf(fp, "========================================================\n");
     fprintf(fp, "\n");
@@ -648,6 +656,19 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     nlopt_result res;
     nlopt_opt opt;
 
+    // Bounds
+    double lb[12], ub[12];
+    for (size_t ii = 0; ii < 12; ii++){
+        lb[ii] = -HUGE_VAL;
+        ub[ii] = HUGE_VAL;
+    }
+    lb[11] = 0.1; // lower bound thrust
+    lb[1] = 0.0;  // lower bound V
+    ub[1] = 0.0;  // upper bound V
+
+    x[1] = 0.0; // initial condition V
+    x[11] = 10; // initial condition thrust
+    
     // run without bounds
     /* opt = nlopt_create(NLOPT_LN_NELDERMEAD, 12); */
     /* opt = nlopt_create(NLOPT_LN_SBPLX, 12);     */
@@ -664,25 +685,13 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     nlopt_set_ftol_rel(opt, -1.0);
     nlopt_set_ftol_abs(opt, 0.0);
     nlopt_set_xtol_abs1(opt, 1e-20);
-    
-    nlopt_set_min_objective(opt, trim_objective, data);
 
-    // no sideslip
-    double lb[12], ub[12];
-    for (size_t ii = 0; ii < 12; ii++){
-        lb[ii] = -HUGE_VAL;
-        ub[ii] = HUGE_VAL;
-    }
-    lb[11] = 0.0; // lower bound thrust
-    lb[1] = 0.0; // lower bound V
-    ub[1] = 0.0; // upper bound V
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_upper_bounds(opt, ub);
+    nlopt_set_min_objective(opt, trim_objective, data);
 
-    x[1] = 0.0;
     res = nlopt_optimize(opt, x, &val);
     nlopt_destroy(opt);
-
 
     double sol[12];
     double ic[12];
@@ -730,6 +739,8 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     
     ss->target_speed = trim_spec_get_speed(data);
     ss->achieved_speed = sqrt(pow(x[0],2) + pow(x[1], 2) + pow(x[2], 2));
+
+    compute_aero_angles(&(ss->UVW), ss->achieved_speed, &(ss->aero));
     
     return 0;
 }
@@ -794,20 +805,80 @@ flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircr
     return traj;
 }
 
+
+static char * program_name;
+
+void print_code_usage (FILE *, int) __attribute__ ((noreturn));
+void print_code_usage (FILE * stream, int exit_code)
+{
+
+    fprintf(stream, "Usage: %s options \n", program_name);
+    fprintf(stream,
+            " -h --help                Display this usage information.\n"
+            " -s --speed      <val>    Desired speed (e.g., 120 --> flight at 120 ft/s, groundspeed), default 120.\n"
+            " -c --climb-rate <val>    Desired climb rate (e.g., -5 --> climb at 5 ft/s), default 0.\n"
+            " -y --yaw-rate   <val>    Desired turn rate (e.g., 3.14 --> turn 'right' at pi rad/s), default 0.\n"
+            /* " -v --verbose    <val>      Output words (default 0)\n" */
+        );
+    exit (exit_code);
+}
+
 int main(int argc, char* argv[]){
 
-    (void) argc;
-    (void) argv;
+    int next_option;
+    const char * const short_options = "hs:c:y:v:";
+    const struct option long_options[] = {
+        { "help"       ,  0, NULL, 'h' },
+        { "speed"      , 1, NULL, 's' },
+        { "climb-rate" , 1, NULL, 'c' },
+        { "yaw-rate"   , 1, NULL, 'y' },        
+        /* { "verbose"    , 1, NULL, 'v' }, */
+        { NULL         , 0, NULL, 0   }
+    };
+    
 
+    real speed = 120.0;
+    real climb_rate = 0.0;
+    real yaw_rate = 0.0;
 
+    do {
+        next_option = getopt_long (argc, argv, short_options, long_options, NULL);
+        switch (next_option)
+        {
+            case 'h': 
+                print_code_usage(stdout, 0);
+            case 's':
+                speed = atof(optarg);
+                break;
+            case 'c':
+                climb_rate = atof(optarg);
+                break;
+            case 'y':
+                yaw_rate = atof(optarg);
+                break;                                
+            /* case 'v': */
+            /*     verbose = strtol(optarg,NULL,10); */
+            /*     break; */
+            case '?': // The user specified an invalid option
+                printf("invalid option %s\n\n",optarg);
+                print_code_usage (stderr, 1);
+            case -1: // Done with options. 
+                break;
+            default: // Something unexpected
+                abort();
+        }
+
+    } while (next_option != -1);
+
+    
     int simulate = 0;
     
     struct Aircraft aircraft;
     pioneer_uav(&aircraft);
     struct TrimSpec trim_spec;
-    trim_spec.z_dot = 0.0;
-    trim_spec.yaw_dot = 0.0 * 3.0 * 2.0 * M_PI / 500.0;
-    trim_spec.target_vel = 120.0; // ft/s
+    trim_spec.z_dot = climb_rate;
+    trim_spec.yaw_dot = yaw_rate; ///3.0 * 2.0 * M_PI / 500.0;
+    trim_spec.target_vel = speed; // ft/s
     trim_spec.ac = &aircraft;
 
     struct SteadyState ss;
