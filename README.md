@@ -21,7 +21,7 @@ Currently, this code implements a 6DOF rigid body model under no wind conditions
 ## Example Usage
 There is currently only a single script called ~ac_trim~. This script allows for computing the trim conditions for steady trimmed flight. To see what the script does you can give the help flag <kbd> ./ac_trim -h </kbd>
 
-Here is sample output for steady flight at a 10 ft/s straight climb rate.
+Here is sample output for steady flight at a speed of 120 ft/s with a 10 ft/s straight climb rate.
 
 
 
