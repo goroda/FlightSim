@@ -742,31 +742,9 @@ int main(int argc, char* argv[]){
     (void) argc;
     (void) argv;
 
-    int check_ac_e = 0;
-    int check_trim_turn = 0;
+
     int simulate = 1;
     
-    if (check_ac_e == 1){
-        struct Vec3 ac = {1.0, 2.0, 3.0};
-        struct Vec3 e;
-        struct EulerAngles ea;
-        ea.roll = M_PI/4;
-        ea.pitch = M_PI/6;
-        ea.yaw = M_PI/8;
-        euler_angles_precompute(&ea);
-
-
-        printf("AC->E;\n");
-        orient_ac_to_e(&ea, &ac, &e);    
-        printf("\t AC = %3.4F, %3.2F, %3.2F\n", ac.v1, ac.v2, ac.v3);
-        printf("\t E = %3.4F, %3.2F, %3.2F\n",   e.v1, e.v2, e.v3);
-
-        printf("E->AC\n");
-        orient_e_to_ac(&ea, &e, &ac);
-        printf("\t AC = %3.4F, %3.2F, %3.2F\n", ac.v1, ac.v2, ac.v3);
-        printf("\t E = %3.4F, %3.2F, %3.2F\n",   e.v1, e.v2, e.v3);
-    }
-
 
     struct Aircraft aircraft;
     pioneer_uav(&aircraft);
@@ -789,40 +767,6 @@ int main(int argc, char* argv[]){
 
         trajectory_print(traj,stdout,5);
         trajectory_free(traj); traj = NULL;
-    }
-
-    if (check_trim_turn == 1){
-
-        double sol[12];
-        double control[4];
-        double ic[12];
-        ic[0] = 0.0;        // x
-        ic[1] = 0.0;        // y
-        ic[2] = -5.0;       // z
-        ic[3] = 119.5379;   // U
-        ic[4] = 0.0;        // V
-        ic[5] = 10.5211;    // W
-        ic[6] = -0.0032731; // P
-        ic[7] = 0.0052497;  // Q
-        ic[8] = 0.037188;   // R
-        ic[9] = 0.14024;    // roll
-        ic[10] = 0.086931;  // pitch
-        ic[11] = 0.7854;    // yaw    
-        controller(0.0, ic, control, NULL);
-        rigid_body_lin_forces(0.0, ic, control, sol, NULL, &aircraft);
-    
-        printf("x: %3.5E, %3.5E\n", ic[0], sol[0]);
-        printf("y: %3.5E, %3.5E\n", ic[1], sol[1]);
-        printf("z: %3.5E, %3.5E\n", ic[2], sol[2]);
-        printf("U: %3.5E, %3.5E\n", ic[3], sol[3]);
-        printf("V: %3.5E, %3.5E\n", ic[4], sol[4]);
-        printf("W: %3.5E, %3.5E\n", ic[5], sol[5]);
-        printf("P: %3.5E, %3.5E\n", ic[6], sol[6]);
-        printf("Q: %3.5E, %3.5E\n", ic[7], sol[7]);
-        printf("R: %3.5E, %3.5E\n", ic[8], sol[8]);
-        printf("r: %3.5E, %3.5E\n", ic[9], sol[9]);
-        printf("p: %3.5E, %3.5E\n", ic[10], sol[10]);
-        printf("y: %3.5E, %3.5E\n", ic[11], sol[11]);
     }
 
     return 0;
