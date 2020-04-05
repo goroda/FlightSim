@@ -510,12 +510,16 @@ int rigid_body_lin_forces(double time, const double * state,
 
 struct TrimSpec
 {
-    double z_dot;
-    double yaw_dot;
-    double target_vel;
+    real z_dot;
+    real yaw_dot;
+    real target_vel;
     
     struct Aircraft * ac;
 };
+
+inline real trim_spec_get_climb_rate(const struct TrimSpec * spec){ return spec->z_dot; }
+inline real trim_spec_get_yaw_rate(const struct TrimSpec * spec){ return spec->yaw_dot; }
+inline real trim_spec_get_speed(const struct TrimSpec * spec){ return spec->target_vel; }
 
 double trim_objective(unsigned n, const double * x, double * grad, void * f_data)
 {
@@ -571,14 +575,21 @@ double trim_objective(unsigned n, const double * x, double * grad, void * f_data
 
 struct SteadyState
 {
-    struct Vec3 UVW;
-    struct Vec3 PQR;
+    struct Vec3 UVW, dUVW;
+    struct Vec3 PQR, dPQR;
     struct Vec3 aero_con;
-    double roll, pitch;
-    double thrust;
+    real roll, droll, pitch, dpitch;
+    real thrust;
 
     nlopt_result res;
     double obj_val;
+
+    real target_yaw_rate, achieved_yaw_rate;
+    real target_speed, achieved_speed;
+
+    real target_climb_rate, achieved_climb_rate;
+    real aoa;
+    real sideslip;
 };
 
 int steady_state_print(FILE * fp, const struct SteadyState * ss)
@@ -589,20 +600,35 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "========================================================\n");
     /* fprintf(fp, "Optimizer result = %c\nObjective value = %3.5E\n", nlopt_result_to_string(ss->res), ss->obj_val);*/
     fprintf(fp, "Optimizer result = %d\nObjective value = %3.5E\n", ss->res, ss->obj_val);    
-    
-    fprintf(fp, "\n\n\n");
-    fprintf(fp, "Steady-state state values\n");
-    fprintf(fp, "-------------------------\n");    
-    fprintf(fp, "(U, V, W)     = (%3.5E \t %3.5E \t %3.5E) \n", ss->UVW.v1, ss->UVW.v2, ss->UVW.v3);
-    fprintf(fp, "(P, Q, R)     = (%3.5E \t %3.5E \t %3.5E) \n", ss->PQR.v1, ss->PQR.v2, ss->PQR.v3);    
-    fprintf(fp, "(Roll, Pitch) = (%3.5E \t %3.5E) \n", ss->roll, ss->pitch);
 
     fprintf(fp, "\n\n\n");
-    fprintf(fp, "Steady-state control values\n");
-    fprintf(fp, "-------------------------\n");    
-    fprintf(fp, "(Elev, Ail, Rud) = (%3.5E \t %3.5E \t %3.5E) \n",
-            ss->aero_con.v1, ss->aero_con.v2, ss->aero_con.v3);
-    fprintf(fp, "Thrust = %3.5E\n", ss->thrust);
+    fprintf(fp, "Spec      :         Targets          Achieved\n");
+    fprintf(fp, "-----------------------------------------------\n");    
+    fprintf(fp, "Speed      :       %3.5E      %3.5E\n", ss->target_speed, ss->achieved_speed);
+    fprintf(fp, "Climb-rate :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
+    fprintf(fp, "Yaw Rate   :       %3.5E      %3.5E\n", ss->target_yaw_rate, ss->achieved_yaw_rate);
+
+        
+    fprintf(fp, "\n\n\n");
+    fprintf(fp, "State      : \t      x \t     dx   \n");
+    fprintf(fp, "--------------------------------------------\n");
+    fprintf(fp, "U (ft/s)   : \t %3.5E \t %3.5E\n", ss->UVW.v1, ss->dUVW.v1);
+    fprintf(fp, "V (ft/s)   : \t %3.5E \t %3.5E\n", ss->UVW.v2, ss->dUVW.v2);
+    fprintf(fp, "W (ft/s)   : \t %3.5E \t %3.5E\n", ss->UVW.v3, ss->dUVW.v3);
+    fprintf(fp, "P (rad/s)  : \t %3.5E \t %3.5E\n", ss->PQR.v1, ss->dPQR.v1);
+    fprintf(fp, "Q (rad/s)  : \t %3.5E \t %3.5E\n", ss->PQR.v2, ss->dPQR.v2);
+    fprintf(fp, "R (rad/s)  : \t %3.5E \t %3.5E\n", ss->PQR.v3, ss->dPQR.v3);
+    fprintf(fp, "Roll (rad) : \t %3.5E \t %3.5E\n", ss->roll, ss->droll);
+    fprintf(fp, "Pitch (rad): \t %3.5E \t %3.5E\n", ss->pitch, ss->dpitch);
+
+    fprintf(fp, "\n\n\n");
+    fprintf(fp, "Input :\n");
+    fprintf(fp, "---------------------------------------------\n");
+    fprintf(fp, "Elevator (rad)     : \t %3.5E\n", ss->aero_con.v1);
+    fprintf(fp, "Aileron  (rad)     : \t %3.5E\n", ss->aero_con.v2);
+    fprintf(fp, "Rudder   (rad)     : \t %3.5E\n", ss->aero_con.v3);
+    fprintf(fp, "Thrust   (lb-slug) : \t %3.5E\n", ss->thrust);
+
     fprintf(fp, "\n");
     fprintf(fp, "========================================================\n");
     fprintf(fp, "\n");
@@ -656,21 +682,39 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     x[1] = 0.0;
     res = nlopt_optimize(opt, x, &val);
     nlopt_destroy(opt);
-    
+
+
+    double sol[12];
+    double ic[12];
+    ic[0] = 0.0; ic[1] = 0.0; ic[2] = 0.0; 
+    ic[3] = x[0]; ic[4] = x[1]; ic[5] = x[2]; 
+    ic[6] = x[3]; ic[7] = x[4]; ic[8] = x[5]; 
+    ic[9] = x[6]; ic[10] = x[7]; ic[11] = 0.0;    
+    rigid_body_lin_forces(0.0, ic, x+8, sol, NULL, data->ac);
+
     ss->res = res;
     ss->obj_val = val;
-
 
     ss->UVW.v1 = x[0];
     ss->UVW.v2 = x[1];
     ss->UVW.v3 = x[2];
+    ss->dUVW.v1 = sol[3];
+    ss->dUVW.v2 = sol[4];
+    ss->dUVW.v3 = sol[5];
+    
 
     ss->PQR.v1 = x[3];
     ss->PQR.v2 = x[4];
-    ss->PQR.v3 = x[5];    
+    ss->PQR.v3 = x[5];
+    ss->dPQR.v1 = sol[6];
+    ss->dPQR.v2 = sol[7];
+    ss->dPQR.v3 = sol[8];    
     
     ss->roll = x[6];
+    ss->droll = sol[9];
+        
     ss->pitch = x[7];
+    ss->dpitch = sol[10];
 
     ss->aero_con.v1 = x[8];
     ss->aero_con.v2 = x[9];
@@ -678,6 +722,15 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     
     ss->thrust = x[11];
 
+    ss->target_climb_rate = trim_spec_get_climb_rate(data);
+    ss->achieved_climb_rate = sol[2];
+    
+    ss->target_yaw_rate = trim_spec_get_yaw_rate(data);
+    ss->achieved_yaw_rate = sol[11];
+    
+    ss->target_speed = trim_spec_get_speed(data);
+    ss->achieved_speed = sqrt(pow(x[0],2) + pow(x[1], 2) + pow(x[2], 2));
+    
     return 0;
 }
 
@@ -747,9 +800,8 @@ int main(int argc, char* argv[]){
     (void) argv;
 
 
-    int simulate = 1;
+    int simulate = 0;
     
-
     struct Aircraft aircraft;
     pioneer_uav(&aircraft);
     struct TrimSpec trim_spec;
