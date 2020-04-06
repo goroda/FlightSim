@@ -3,8 +3,8 @@
 
   Author: Alex Gorodetsky
   email: goroda@umich.edu
-  copyright: Alex Gorodetsky (c) 2020
-  license: GPL
+  Copyright (c) 2020 Alex Gorodetsky 
+  License: GPL3
 
 */
 #include <stdio.h>
@@ -525,6 +525,8 @@ struct TrimSpec
     real target_vel;
     
     struct Aircraft * ac;
+
+    real thresh;
 };
 
 inline real trim_spec_get_climb_rate(const struct TrimSpec * spec){ return spec->z_dot; }
@@ -682,12 +684,19 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     
     // run without bounds
     /* opt = nlopt_create(NLOPT_LN_NELDERMEAD, 12); */
-    /* opt = nlopt_create(NLOPT_LN_SBPLX, 12);     */
-    /* nlopt_set_ftol_rel(opt, -1.0); */
-    /* nlopt_set_ftol_abs(opt, 1e-14); */
-    /* nlopt_set_min_objective(opt, trim_objective, data); */
-    /* res = nlopt_optimize(opt, x, &val); */
-    /* nlopt_destroy(opt); */
+    opt = nlopt_create(NLOPT_LN_NEWUOA, 12);
+    nlopt_set_ftol_rel(opt, -1.0);
+    nlopt_set_ftol_abs(opt, 1e-20);
+    nlopt_set_lower_bounds(opt, lb);
+    nlopt_set_upper_bounds(opt, ub);    
+    nlopt_set_min_objective(opt, trim_objective, data);
+    res = nlopt_optimize(opt, x, &val);
+    nlopt_destroy(opt);
+    for (size_t ii = 0; ii < 12; ii++){
+        if (fabs(x[ii]) < data->thresh){
+            x[ii] = 0.0;
+        }
+    }
 
     // run with bounds (again)
     /* opt = nlopt_create(NLOPT_LN_NELDERMEAD, 12); */
@@ -704,6 +713,12 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     res = nlopt_optimize(opt, x, &val);
     nlopt_destroy(opt);
 
+    for (size_t ii = 0; ii < 12; ii++){
+        if (fabs(x[ii]) < data->thresh){
+            x[ii] = 0.0;
+        }
+    }
+    
     double sol[12];
     double ic[12];
     ic[0] = 0.0; ic[1] = 0.0; ic[2] = 0.0; 
@@ -829,6 +844,7 @@ void print_code_usage (FILE * stream, int exit_code)
             " -s --speed      <val>    Desired speed (e.g., 120 --> flight at 120 ft/s, groundspeed), default 120.\n"
             " -c --climb-rate <val>    Desired climb rate (e.g., -5 --> climb at 5 ft/s), default 0.\n"
             " -y --yaw-rate   <val>    Desired turn rate (e.g., 3.14 --> turn 'right' at pi rad/s), default 0.\n"
+            " -t --threshold  <val>    Threshold value for setting states to zero default 1e-10.\n"            
             /* " -v --verbose    <val>      Output words (default 0)\n" */
         );
     exit (exit_code);
@@ -837,12 +853,13 @@ void print_code_usage (FILE * stream, int exit_code)
 int main(int argc, char* argv[]){
 
     int next_option;
-    const char * const short_options = "hs:c:y:v:";
+    const char * const short_options = "hs:c:y:t:";
     const struct option long_options[] = {
         { "help"       ,  0, NULL, 'h' },
         { "speed"      , 1, NULL, 's' },
         { "climb-rate" , 1, NULL, 'c' },
-        { "yaw-rate"   , 1, NULL, 'y' },        
+        { "yaw-rate"   , 1, NULL, 'y' },
+        { "threshold"  , 1, NULL, 't' },
         /* { "verbose"    , 1, NULL, 'v' }, */
         { NULL         , 0, NULL, 0   }
     };
@@ -851,7 +868,7 @@ int main(int argc, char* argv[]){
     real speed = 120.0;
     real climb_rate = 0.0;
     real yaw_rate = 0.0;
-
+    real thresh = 1e-10; // threshold for zero
     do {
         next_option = getopt_long (argc, argv, short_options, long_options, NULL);
         switch (next_option)
@@ -866,6 +883,9 @@ int main(int argc, char* argv[]){
                 break;
             case 'y':
                 yaw_rate = atof(optarg);
+                break;
+            case 't':
+                thresh = atof(optarg);
                 break;                                
             /* case 'v': */
             /*     verbose = strtol(optarg,NULL,10); */
@@ -891,6 +911,7 @@ int main(int argc, char* argv[]){
     trim_spec.yaw_dot = yaw_rate; ///3.0 * 2.0 * M_PI / 500.0;
     trim_spec.target_vel = speed; // ft/s
     trim_spec.ac = &aircraft;
+    trim_spec.thresh = thresh; 
 
     struct SteadyState ss;
     trimmer(&trim_spec, &ss);
