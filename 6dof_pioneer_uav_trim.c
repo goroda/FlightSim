@@ -902,7 +902,7 @@ int main(int argc, char* argv[]){
     } while (next_option != -1);
 
     
-    int simulate = 0;
+
     
     struct Aircraft aircraft;
     pioneer_uav(&aircraft);
@@ -917,6 +917,8 @@ int main(int argc, char* argv[]){
     trimmer(&trim_spec, &ss);
     steady_state_print(stdout, &ss);
 
+
+    int simulate = 0;    
     if (simulate == 1){
         struct Vec3 xyz = {0, 0, -5};
         real yaw = M_PI / 4.0;
