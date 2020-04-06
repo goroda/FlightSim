@@ -1,3 +1,12 @@
+/*
+  This is a 6DOF Rigid body aircraft simulator
+
+  Author: Alex Gorodetsky
+  email: goroda@umich.edu
+  copyright: Alex Gorodetsky (c) 2020
+  license: GPL
+
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
