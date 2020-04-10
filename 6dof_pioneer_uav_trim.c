@@ -51,12 +51,36 @@ struct AeroAngles {
 
     real aoa;
     real sideslip;
+    
+    real aoa_g_w;
+    real aoa_g_u;    
+    real sideslip_g_v;
+    real sideslip_g_vac;
 };
 
 int compute_aero_angles(const struct Vec3* UVW, real Vac, struct AeroAngles * ab)
 {
     ab->aoa = atan2(UVW->v3, UVW->v1);
     ab->sideslip = asin(UVW->v2/Vac);
+    return 0;
+}
+
+int compute_aero_angles_g (const struct Vec3* UVW, real Vac, struct AeroAngles * ab)
+{
+    ab->aoa = atan2(UVW->v3, UVW->v1);
+    real den = pow(UVW->v3, 2) + pow(UVW->v1, 2);
+    ab->aoa_g_w = UVW->v1 / den;
+    ab->aoa_g_u = - UVW->v3 / den;
+
+
+    
+    ab->sideslip = asin(UVW->v2/Vac);
+    real rat = Vac * sqrt(1 - pow(UVW->v2, 2) / pow(Vac, 2));
+    real ratt = Vac * rat;
+
+    ab->sideslip_g_v =  1.0 / rat;
+    ab->sideslip_g_vac = - UVW->v2 / ratt;
+
     return 0;
 }
 
@@ -76,8 +100,42 @@ struct EulerAngles{
 
     real cy;
     real sy;
-};
 
+    real sr_sp; // sin_roll * sin_pitch;
+    real sr_cp; // sin_roll * cos_pitch;
+    real sr_sy; // sin_roll * sin yaw
+    real sr_cy; // sin_roll * cos yaw    
+    real cr_sp; // cos_roll * sin_pitch
+    real cr_cp; // cos_roll * cos_pitch
+    real cr_cy; // cos_roll * cos_yaw
+    real cr_sy; // cos_roll * sin_yaw
+    real cp_cy; // cos_pitch * cos_yaw
+    real cp_sy; // cos_pitch * sin_yaw
+
+    real sr_sp_cy; // s roll s pitch c yaw
+    real sr_sp_sy; // s roll s pitch s yaw
+
+    real cr_sp_cy; // c roll s pitch c yaw
+    real cr_sp_sy; // c roll s pitch s yaw
+
+
+    real sr_sp_g_r, sr_sp_g_p;
+    real sr_cp_g_r, sr_cp_g_p; 
+    real sr_sy_g_r, sr_sy_g_y; 
+    real sr_cy_g_r, sr_cy_g_y; 
+    real cr_sp_g_r, cr_sp_g_p; 
+    real cr_cp_g_r, cr_cp_g_p; 
+    real cr_cy_g_r, cr_cy_g_y; 
+    real cr_sy_g_r, cr_sy_g_y; 
+    real cp_cy_g_p, cp_cy_g_y; 
+    real cp_sy_g_p, cp_sy_g_y; 
+
+    real sr_sp_cy_g_r, sr_sp_cy_g_p, sr_sp_cy_g_y; 
+    real sr_sp_sy_g_r, sr_sp_sy_g_p, sr_sp_sy_g_y; 
+
+    real cr_sp_cy_g_r, cr_sp_cy_g_p, cr_sp_cy_g_y; 
+    real cr_sp_sy_g_r, cr_sp_sy_g_p, cr_sp_sy_g_y; 
+};
 
 int euler_angles_precompute(struct EulerAngles * ea)
 {
@@ -91,34 +149,96 @@ int euler_angles_precompute(struct EulerAngles * ea)
     ea->cy = cos(ea->yaw);
     ea->sy = sin(ea->yaw);
 
+    ea->sr_sp = ea->sr * ea->sp; // sin_roll * sin_pitch;
+    ea->sr_cp = ea->sr * ea->cp; // sin_roll * cos_pitch;
+    ea->sr_sy = ea->sr * ea->sy; // sin_roll * sin yaw
+    ea->sr_cy = ea->sr * ea->cy; // sin_roll * cos yaw    
+    ea->cr_sp = ea->cr * ea->sp; // cos_roll * sin_pitch
+    ea->cr_cp = ea->cr * ea->cp; // cos_roll * cos_pitch
+    ea->cr_cy = ea->cr * ea->cy; // cos_roll * cos_yaw
+    ea->cr_sy = ea->cr * ea->sy; // cos_roll * sin_yaw
+    ea->cp_cy = ea->cp * ea->cy; // cos_pitch * cos_yaw
+    ea->cp_sy = ea->cp * ea->sy; // cos_pitch * sin_yaw
+
+    ea->sr_sp_cy = ea->sr_sp * ea->cy; // s roll s pitch c yaw
+    ea->sr_sp_sy = ea->sr_sp * ea->sy; // s roll s pitch s yaw
+
+    ea->cr_sp_cy = ea->cr_sp * ea->cy; // c roll s pitch c yaw
+    ea->cr_sp_sy = ea->cr_sp * ea->sy; // c roll s pitch s yaw    
+    
     return 0;
 }
+
+
+int euler_angles_precompute_g(struct EulerAngles * ea)
+{
+    euler_angles_precompute(ea);
+
+    ea->sr_sp_g_r = ea->cr_sp; 
+    ea->sr_sp_g_p = ea->sr_cp;
+
+    ea->sr_cp_g_r = ea->cr_cp;
+    ea->sr_cp_g_p = -ea->sr_sp;
+
+    ea->sr_sy_g_r = ea->cr_sy;
+    ea->sr_sy_g_y = ea->sr_cy; 
+
+    ea->sr_cy_g_r = ea->cr_cy;
+    ea->sr_cy_g_y = -ea->sr_sy;
+
+    ea->cr_sp_g_r = -ea->sr_sp;
+    ea->cr_sp_g_p = ea->cr_cp;
+
+    ea->cr_cp_g_r = -ea->sr_cp;
+    ea->cr_cp_g_p = -ea->cr_sp;
+
+    ea->cr_cy_g_r = -ea->sr_cy;
+    ea->cr_cy_g_y = -ea->cr_sy; 
+
+    ea->cr_sy_g_r = -ea->sr_sy;
+    ea->cr_sy_g_y = ea->cr_cy;
+
+    ea->cp_cy_g_p = -ea->sp * ea->cy; //-ea->sp_cy;
+    ea->cp_cy_g_y = -ea->cp_sy;
+
+    ea->cp_sy_g_p = -ea->sp * ea->sy; //-ea->sp_sy,
+    ea->cp_sy_g_y = ea->cp_cy;     
+    
+    ea->sr_sp_cy_g_r = ea->cr_sp_cy;
+    ea->sr_sp_cy_g_p = ea->sr_cp * ea->cy;
+    ea->sr_sp_cy_g_y = -ea->sr_sp_sy; 
+
+    ea->sr_sp_sy_g_r = ea->cr_sp_sy;
+    ea->sr_sp_sy_g_p = ea->sr_cp * ea->sy;
+    ea->sr_sp_sy_g_y = ea->sr_sp_cy; 
+
+    ea->cr_sp_cy_g_r = -ea->sr_sp_cy;
+    ea->cr_sp_cy_g_p = ea->cr_cp * ea->cy;
+    ea->cr_sp_cy_g_y = -ea->cr_sp * ea->sy;
+
+    ea->cr_sp_sy_g_r = -ea->sr_sp_sy;
+    ea->cr_sp_sy_g_p = ea->cr_cp * ea->sy;
+    ea->cr_sp_sy_g_y = ea->cr_sp_cy;
+    
+    return 0;
+}
+
 
 int orient_e_to_ac(const struct EulerAngles *ea, const struct Vec3* e, struct Vec3* ac)
 {
     // yaw, pitch, roll
-    real sr_sp = ea->sr * ea->sp; // sin_roll * sin_pitch;
-    real sr_cp = ea->sr * ea->cp; // sin_roll * cos_pitch;
-    real sr_sy = ea->sr * ea->sy; // sin_roll * sin yaw
-    real sr_cy = ea->sr * ea->cy; // sin_roll * cos yaw    
-    real cr_sp = ea->cr * ea->sp; // cos_roll * sin_pitch
-    real cr_cp = ea->cr * ea->cp; // cos_roll * cos_pitch
-    real cr_cy = ea->cr * ea->cy; // cos_roll * cos_yaw
-    real cr_sy = ea->cr * ea->sy; // cos_roll * sin_yaw
-    real cp_cy = ea->cp * ea->cy; // cos_pitch * cos_yaw
-    real cp_sy = ea->cp * ea->sy; // cos_pitch * sin_yaw
     
-    ac->v1 = cp_cy * e->v1 +
-             cp_sy * e->v2 -
+    ac->v1 = ea->cp_cy * e->v1 +
+             ea->cp_sy * e->v2 -
              ea->sp * e->v3;
 
-    ac->v2 = (sr_sp * ea->cy - cr_sy) * e->v1 +
-             (sr_sp * ea->sy + cr_cy) * e->v2 +
-                                sr_cp * e->v3;
+    ac->v2 = (ea->sr_sp_cy - ea->cr_sy) * e->v1 +
+             (ea->sr_sp_sy + ea->cr_cy) * e->v2 +
+                                ea->sr_cp * e->v3;
 
-    ac->v3 = (cr_sp * ea->cy + sr_sy) * e->v1 +
-             (cr_sp * ea->sy - sr_cy) * e->v2 +
-                                cr_cp * e->v3;
+    ac->v3 = (ea->cr_sp_cy + ea->sr_sy) * e->v1 +
+             (ea->cr_sp_sy - ea->sr_cy) * e->v2 +
+                                ea->cr_cp * e->v3;
 
     return 0;
 }
@@ -126,31 +246,208 @@ int orient_e_to_ac(const struct EulerAngles *ea, const struct Vec3* e, struct Ve
 int orient_ac_to_e(const struct EulerAngles *ea, const struct Vec3* ac, struct Vec3* e)
 {
     // -roll, -pitch, -yaw
-    real sr_sp = ea->sr * ea->sp; // sin_roll * sin_pitch;
-    real sr_cp = ea->sr * ea->cp; // sin_roll * cos_pitch;
-    real sr_sy = ea->sr * ea->sy; // sin_roll * sin yaw
-    real sr_cy = ea->sr * ea->cy; // sin_roll * cos yaw    
-    real cr_sp = ea->cr * ea->sp; // cos_roll * sin_pitch
-    real cr_cp = ea->cr * ea->cp; // cos_roll * cos_pitch
-    real cr_cy = ea->cr * ea->cy; // cos_roll * cos_yaw
-    real cr_sy = ea->cr * ea->sy; // cos_roll * sin_yaw
-    real cp_cy = ea->cp * ea->cy; // cos_pitch * cos_yaw
-    real cp_sy = ea->cp * ea->sy; // cos_pitch * sin_yaw
 
-    e->v1 =                cp_cy * ac->v1 +
-        (sr_sp * ea->cy - cr_sy) * ac->v2 + //(sr_sp * ea->cy - cr_sy)
-        (cr_sp * ea->cy + sr_sy) * ac->v3; //(cr_sp * ea->cy + sr_sy)
+    e->v1 =              ea->cp_cy * ac->v1 +
+        (ea->sr_sp_cy - ea->cr_sy) * ac->v2 + 
+        (ea->cr_sp_cy + ea->sr_sy) * ac->v3;
 
-    e->v2 =                cp_sy * ac->v1 +
-        (sr_sp * ea->sy + cr_cy) * ac->v2 +  //            (sr_sp * ea->sy + cr_cy) * e->v2 +
-        (cr_sp * ea->sy - sr_cy) * ac->v3;  //             (cr_sp * ea->sy - sr_cy) * e->v2 +
+    e->v2 =              ea->cp_sy * ac->v1 +
+        (ea->sr_sp_sy + ea->cr_cy) * ac->v2 +  
+        (ea->cr_sp_sy - ea->sr_cy) * ac->v3;  
 
     e->v3 = - ea->sp * ac->v1 +
-               sr_cp * ac->v2 +
-               cr_cp * ac->v3;
+           ea->sr_cp * ac->v2 +
+           ea->cr_cp * ac->v3;
 
+    /* e->v3 = - ea->sp * ac->v1; */
+    
     return 0;
 }
+
+
+struct StateGrad
+{
+    real U_g;
+    real V_g;
+    real W_g;
+    real P_g;
+    real Q_g;
+    real R_g;
+    real Roll_g;
+    real Pitch_g;
+    real Yaw_g;
+};
+
+int orient_ac_to_e_g(const struct EulerAngles *ea, const struct Vec3* ac, struct Vec3* e,
+                       struct StateGrad sg[3])
+{
+    // -roll, -pitch, -yaw
+
+    sg[0].U_g = ea->cp_cy;
+    sg[0].V_g = ea->sr_sp_cy - ea->cr_sy;
+    sg[0].W_g = ea->cr_sp_cy + ea->sr_sy;
+    sg[0].P_g = 0; sg[0].Q_g = 0; sg[0].R_g = 0;
+
+    e->v1 = sg[0].U_g * ac->v1 + sg[0].V_g * ac->v2 + sg[0].W_g * ac->v3;
+
+    sg[0].Roll_g = (ea->sr_sp_cy_g_r - ea->cr_sy_g_r) * ac->v2 +
+                    (ea->cr_sp_cy_g_r + ea->sr_sy_g_r) * ac->v3;
+    
+    sg[0].Pitch_g = ea->cp_cy_g_p * ac->v1 +
+        ea->sr_sp_cy_g_p * ac->v2 +
+        ea->cr_sp_cy_g_p * ac->v3;
+        
+    sg[0].Yaw_g = ea->cp_cy_g_y * ac->v1 +
+         (ea->sr_sp_cy_g_y - ea->cr_sy_g_y) * ac->v2 +
+         (ea->cr_sp_cy_g_y + ea->sr_sy_g_y) * ac->v3;
+        
+    sg[1].U_g = ea->cp_sy;
+    sg[1].V_g = ea->sr_sp_sy + ea->cr_cy; 
+    sg[1].W_g = ea->cr_sp_sy - ea->sr_cy; 
+    sg[1].P_g = 0; sg[1].Q_g = 0; sg[1].R_g = 0;
+    
+    e->v2 = sg[1].U_g * ac->v1 +
+            sg[1].V_g * ac->v2 +
+            sg[1].W_g * ac->v3;
+
+    sg[1].Roll_g = (ea->sr_sp_sy_g_r + ea->cr_cy_g_r) * ac->v2 +
+                    (ea->cr_sp_sy_g_r - ea->sr_cy_g_r) * ac->v3;
+    
+    sg[1].Pitch_g = ea->cp_sy_g_p * ac->v1 +
+                     ea->sr_sp_sy_g_p * ac->v2 +
+                     ea->cr_sp_sy_g_p * ac->v3;
+
+    sg[1].Yaw_g = ea->cp_sy_g_y * ac->v1 +
+                     (ea->sr_sp_sy_g_y + ea->cr_cy_g_y) * ac->v2 +
+                     (ea->cr_sp_sy_g_y - ea->sr_cy_g_y) * ac->v3;    
+    
+
+    sg[2].U_g = -ea->sp;
+    sg[2].V_g = ea->sr_cp;
+    sg[2].W_g = ea->cr_cp;
+    sg[2].P_g = 0; sg[2].Q_g = 0; sg[2].R_g = 0;
+    
+    e->v3 = - ea->sp * ac->v1 +
+              ea->sr_cp * ac->v2 +
+              ea->cr_cp * ac->v3;
+
+    sg[2].Roll_g = ea->sr_cp_g_r * ac->v2 + ea->cr_cp_g_r * ac->v3;
+    sg[2].Pitch_g = -ea->cp * ac->v1 +
+        ea->sr_cp_g_p * ac->v2 +
+        ea->cr_cp_g_p * ac->v3; 
+    sg[2].Yaw_g = 0.0;
+    
+    return 0;
+}
+
+int check_grad_ac_to_e(void)
+{
+    struct EulerAngles ea;
+    ea.roll = M_PI/9.0;
+    ea.pitch = M_PI/8.0;
+    ea.yaw = M_PI/6.0;
+    euler_angles_precompute_g(&ea);
+    struct Vec3 ac = {120.0, 150.0, 80.0};
+    struct Vec3 e;
+    
+    struct StateGrad sg[3];
+
+    // reference
+    orient_ac_to_e(&ea, &ac, &e);
+    struct Vec3 e_ref = {e.v1, e.v2, e.v3};
+    printf("Checking value computation\n");
+    printf("Numerical %3.5E %3.5E %3.5E\n", e.v1, e.v2, e.v3);    
+
+    // compute analytic gradient
+    orient_ac_to_e_g(&ea, &ac, &e, sg);
+    printf("Analytic %3.5E %3.5E %3.5E\n", e.v1, e.v2, e.v3);
+    printf("\n\n\n");
+    
+    double h = 1e-8;
+    
+    double grad_U[3];
+    ac.v1 += h;
+    orient_ac_to_e(&ea, &ac, &e);
+    grad_U[0] = (e.v1 - e_ref.v1) / h;
+    grad_U[1] = (e.v2 - e_ref.v2) / h;
+    grad_U[2] = (e.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to U\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_U[0], grad_U[1], grad_U[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].U_g, sg[1].U_g, sg[2].U_g);
+    printf("\n\n");
+    
+    double grad_V[3];
+    ac.v1 -= h;
+    ac.v2 += h;
+    orient_ac_to_e(&ea, &ac, &e);
+    grad_V[0] = (e.v1 - e_ref.v1) / h;
+    grad_V[1] = (e.v2 - e_ref.v2) / h;
+    grad_V[2] = (e.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to V\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_V[0], grad_V[1], grad_V[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].V_g, sg[1].V_g, sg[2].V_g);
+    printf("\n\n");
+    
+    double grad_W[3];
+    ac.v2 -= h;
+    ac.v3 += h;
+    orient_ac_to_e(&ea, &ac, &e);
+    grad_W[0] = (e.v1 - e_ref.v1) / h;
+    grad_W[1] = (e.v2 - e_ref.v2) / h;
+    grad_W[2] = (e.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to W\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_W[0], grad_W[1], grad_W[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].W_g, sg[1].W_g, sg[2].W_g);
+    printf("\n\n");
+
+    double grad_R[3];
+    ac.v3 -= h;
+    ea.roll += h;
+    euler_angles_precompute(&ea);
+    orient_ac_to_e(&ea, &ac, &e);
+    
+    grad_R[0] = (e.v1 - e_ref.v1) / h;
+    grad_R[1] = (e.v2 - e_ref.v2) / h;
+    grad_R[2] = (e.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Roll\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_R[0], grad_R[1], grad_R[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Roll_g, sg[1].Roll_g, sg[2].Roll_g);
+    printf("\n\n");
+    
+    double grad_P[3];
+    ea.roll -= h;
+    ea.pitch += h;
+    euler_angles_precompute(&ea);
+    orient_ac_to_e(&ea, &ac, &e);
+    grad_P[0] = (e.v1 - e_ref.v1) / h;
+    grad_P[1] = (e.v2 - e_ref.v2) / h;
+    grad_P[2] = (e.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Pitch\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_P[0], grad_P[1], grad_P[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Pitch_g, sg[1].Pitch_g, sg[2].Pitch_g);
+    printf("\n\n");
+    
+    double grad_Y[3];
+    ea.pitch -= h;
+    ea.yaw += h;
+    euler_angles_precompute(&ea);
+    orient_ac_to_e(&ea, &ac, &e);
+    grad_Y[0] = (e.v1 - e_ref.v1) / h;
+    grad_Y[1] = (e.v2 - e_ref.v2) / h;
+    grad_Y[2] = (e.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Yaw\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_Y[0], grad_Y[1], grad_Y[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Yaw_g, sg[1].Yaw_g, sg[2].Yaw_g);
+    
+    return 0;
+}
+
 
 // Translational kinematics
 inline int tkin(const struct EulerAngles * ea, const struct Vec3 *UVW, struct Vec3 * rates){return orient_ac_to_e(ea, UVW, rates);}
@@ -852,6 +1149,10 @@ void print_code_usage (FILE * stream, int exit_code)
 
 int main(int argc, char* argv[]){
 
+
+    check_grad_ac_to_e();
+    return 0;
+    
     int next_option;
     const char * const short_options = "hs:c:y:t:";
     const struct option long_options[] = {
