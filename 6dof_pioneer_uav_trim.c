@@ -451,6 +451,7 @@ int check_grad_ac_to_e(void)
 
 // Translational kinematics
 inline int tkin(const struct EulerAngles * ea, const struct Vec3 *UVW, struct Vec3 * rates){return orient_ac_to_e(ea, UVW, rates);}
+inline int tkin_g(const struct EulerAngles * ea, const struct Vec3 *UVW, struct Vec3 * rates, struct StateGrad sg[3]){return orient_ac_to_e_g(ea, UVW, rates, sg);}
 
 // Rotational kinematics
 int rkin(const struct EulerAngles * ea, const struct Vec3 * PQR, struct Vec3 * rates)
@@ -462,6 +463,162 @@ int rkin(const struct EulerAngles * ea, const struct Vec3 * PQR, struct Vec3 * r
     rates->v2 = ea->cr * PQR->v2 - ea->sr * PQR->v3;
     rates->v3 = ea->sr * secp * PQR->v2 + ea->cr * secp * PQR->v3;
 
+    return 0;
+}
+
+// Rotational kinematics
+int rkin_g(const struct EulerAngles * ea, const struct Vec3 * PQR, struct Vec3 * rates, struct StateGrad sg[3])
+{
+    real secp = 1.0 / ea->cp;
+    real tp = ea->sp  * secp;
+
+    real secp_g_p = tp * secp;
+    real tp_p = secp * secp;
+
+    sg[0].U_g = 0.0; sg[0].V_g = 0.0; sg[0].W_g = 0.0;
+    sg[0].P_g = 1.0;
+    sg[0].Q_g = ea->sr * tp;
+    sg[0].R_g = ea->cr * tp;
+
+    rates->v1 = sg[0].P_g * PQR->v1 + sg[0].Q_g * PQR->v2 + sg[0].R_g * PQR->v3;
+
+    /* sg[0].Roll_g = ea->cr * tp * PQR->v2 - ea->sr * tp * PQR->v3; */
+    sg[0].Roll_g = sg[0].R_g * PQR->v2 - sg[0].Q_g * PQR->v3; // turns out to be shortcut for above commented line
+    sg[0].Pitch_g = ea->sr * tp_p * PQR->v2 + ea->cr * tp_p * PQR->v3;
+    sg[0].Yaw_g = 0.0;
+
+    sg[1].U_g = 0.0; sg[1].V_g = 0.0; sg[1].W_g = 0.0;
+    sg[1].P_g = 0.0;
+    sg[1].Q_g = ea->cr;
+    sg[1].R_g = -ea->sr;
+
+    rates->v2 = ea->cr * PQR->v2 - ea->sr * PQR->v3;
+
+    sg[1].Roll_g = -ea->sr * PQR->v2 - ea->cr * PQR->v3;
+    sg[1].Pitch_g = 0.0;
+    sg[1].Yaw_g = 0.0;
+
+    
+    sg[2].U_g = 0.0; sg[2].V_g = 0.0; sg[2].W_g = 0.0;
+    sg[2].P_g = 0.0;
+    sg[2].Q_g = ea->sr * secp;
+    sg[2].R_g = ea->cr * secp;
+    
+    rates->v3 = sg[2].Q_g * PQR->v2 + sg[2].R_g * PQR->v3;
+
+    /* sg[2].Roll_g = ea->cr * secp * PQR->v2 - ea->sr * secp * PQR->v3; */
+    sg[2].Roll_g = sg[2].R_g * PQR->v2 - sg[2].Q_g * PQR->v3;   //shortand for above 
+    sg[2].Pitch_g = ea->sr * secp_g_p * PQR->v2 + ea->cr * secp_g_p * PQR->v3;
+    sg[2].Yaw_g = 0.0;
+    
+    return 0;
+}
+
+int check_grad_rkin(void)
+{
+    struct EulerAngles ea;
+    ea.roll = M_PI/9.0;
+    ea.pitch = M_PI/8.0;
+    ea.yaw = M_PI/6.0;
+    euler_angles_precompute_g(&ea);
+    struct Vec3 pqr = {120.0, 150.0, 80.0};
+    struct Vec3 rates;
+    
+    struct StateGrad sg[3];
+
+    // reference
+    rkin(&ea, &pqr, &rates);
+    struct Vec3 e_ref = {rates.v1, rates.v2, rates.v3};
+    printf("Checking value computation\n");
+    printf("Numerical %3.5E %3.5E %3.5E\n", rates.v1, rates.v2, rates.v3);    
+
+    // compute analytic gradient
+    rkin_g(&ea, &pqr, &rates, sg);
+    printf("Analytic %3.5E %3.5E %3.5E\n", rates.v1, rates.v2, rates.v3);
+    printf("\n\n\n");
+    
+    double h = 1e-10;
+    
+    double grad_P[3];
+    pqr.v1 += h;
+    rkin(&ea, &pqr, &rates);
+    grad_P[0] = (rates.v1 - e_ref.v1) / h;
+    grad_P[1] = (rates.v2 - e_ref.v2) / h;
+    grad_P[2] = (rates.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to P\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_P[0], grad_P[1], grad_P[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].P_g, sg[1].P_g, sg[2].P_g);
+    printf("\n\n");
+    
+    double grad_Q[3];
+    pqr.v1 -= h;
+    pqr.v2 += h;
+    rkin(&ea, &pqr, &rates);
+    grad_Q[0] = (rates.v1 - e_ref.v1) / h;
+    grad_Q[1] = (rates.v2 - e_ref.v2) / h;
+    grad_Q[2] = (rates.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Q\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_Q[0], grad_Q[1], grad_Q[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Q_g, sg[1].Q_g, sg[2].Q_g);
+    printf("\n\n");
+    
+    double grad_R[3];
+    pqr.v2 -= h;
+    pqr.v3 += h;
+    rkin(&ea, &pqr, &rates);
+    grad_R[0] = (rates.v1 - e_ref.v1) / h;
+    grad_R[1] = (rates.v2 - e_ref.v2) / h;
+    grad_R[2] = (rates.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to R\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_R[0], grad_R[1], grad_R[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].R_g, sg[1].R_g, sg[2].R_g);
+    printf("\n\n");
+
+    double grad_Roll[3];
+    pqr.v3 -= h;
+    ea.roll += h;
+    euler_angles_precompute(&ea);
+    rkin(&ea, &pqr, &rates);
+    
+    grad_Roll[0] = (rates.v1 - e_ref.v1) / h;
+    grad_Roll[1] = (rates.v2 - e_ref.v2) / h;
+    grad_Roll[2] = (rates.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Roll\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_Roll[0], grad_Roll[1], grad_Roll[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Roll_g, sg[1].Roll_g, sg[2].Roll_g);
+    printf("\n\n");
+    
+    double grad_Pitch[3];
+    ea.roll -= h;
+    ea.pitch += h;
+    euler_angles_precompute(&ea);
+    rkin(&ea, &pqr, &rates);
+    grad_Pitch[0] = (rates.v1 - e_ref.v1) / h;
+    grad_Pitch[1] = (rates.v2 - e_ref.v2) / h;
+    grad_Pitch[2] = (rates.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Pitch\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_Pitch[0], grad_Pitch[1], grad_Pitch[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Pitch_g, sg[1].Pitch_g, sg[2].Pitch_g);
+    printf("\n\n");
+    
+    double grad_Yaw[3];
+    ea.pitch -= h;
+    ea.yaw += h;
+    euler_angles_precompute(&ea);
+    rkin(&ea, &pqr, &rates);
+    grad_Yaw[0] = (rates.v1 - e_ref.v1) / h;
+    grad_Yaw[1] = (rates.v2 - e_ref.v2) / h;
+    grad_Yaw[2] = (rates.v3 - e_ref.v3) / h;
+
+    printf("Checking Gradient with respect to Yaw\n");
+    printf("Numerical: %3.5E, %3.5E, %3.5E\n", grad_Yaw[0], grad_Yaw[1], grad_Yaw[2]);
+    printf("Analytic: %3.5E, %3.5E, %3.5E\n", sg[0].Yaw_g, sg[1].Yaw_g, sg[2].Yaw_g);
+    
     return 0;
 }
 
@@ -1150,7 +1307,8 @@ void print_code_usage (FILE * stream, int exit_code)
 int main(int argc, char* argv[]){
 
 
-    check_grad_ac_to_e();
+    /* check_grad_ac_to_e(); */
+    check_grad_rkin();    
     return 0;
     
     int next_option;
