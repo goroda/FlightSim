@@ -864,7 +864,6 @@ int rdyn_g(const struct Vec3 * PQR,
     real M = LMN->v2;
     real N = LMN->v3;
 
-
     real rt11 = aircraft_get_rt11(ac);
     real rt12 = aircraft_get_rt12(ac);
     real rt21 = aircraft_get_rt21(ac);
@@ -883,6 +882,56 @@ int rdyn_g(const struct Vec3 * PQR,
     rates->v1 = (rt11 * QR + rt12 * PQ + Izz * L + Ixz * N) / rtn1;
     rates->v2 = (rt21 * P * R + rt22 * (R * R - P * P) + M) / rtn2;
     rates->v3 = (rt31 * PQ + rt32 * QR + Ixz * L + Ixx * N) / rtn3;
+
+    sg[0].U_g = (Izz * LMN_g[0].U_g + Ixz * LMN_g[2].U_g) / rtn1;
+    sg[0].V_g = (Izz * LMN_g[0].V_g + Ixz * LMN_g[2].V_g) / rtn1;
+    sg[0].W_g = (Izz * LMN_g[0].W_g + Ixz * LMN_g[2].W_g) / rtn1;
+    sg[0].Roll_g = (Izz * LMN_g[0].Roll_g + Ixz * LMN_g[2].Roll_g) / rtn1;
+    sg[0].Pitch_g = (Izz * LMN_g[0].Pitch_g + Ixz * LMN_g[2].Pitch_g) / rtn1;
+    sg[0].Yaw_g = (Izz * LMN_g[0].Yaw_g + Ixz * LMN_g[2].Yaw_g) / rtn1;
+
+    cg[0].elev_g = (Izz * LMN_cg[0].elev_g + Ixz * LMN_cg[2].elev_g) / rtn1;
+    cg[0].thrust_g = (Izz * LMN_cg[0].thrust_g + Ixz * LMN_cg[2].thrust_g) / rtn1;
+    cg[0].aileron_g = (Izz * LMN_cg[0].aileron_g + Ixz * LMN_cg[2].aileron_g) / rtn1;
+    cg[0].rudder_g = (Izz * LMN_cg[0].rudder_g + Ixz * LMN_cg[2].rudder_g) / rtn1;    
+    
+    sg[1].U_g = LMN_g[1].U_g / rtn2;
+    sg[1].V_g = LMN_g[1].V_g / rtn2;
+    sg[1].W_g = LMN_g[1].W_g / rtn2;
+    sg[1].Roll_g = LMN_g[1].Roll_g / rtn2;
+    sg[1].Pitch_g = LMN_g[1].Pitch_g / rtn2;
+    sg[1].Yaw_g = LMN_g[1].Yaw_g / rtn2;
+
+    cg[1].elev_g = LMN_cg[1].elev_g / rtn2;
+    cg[1].thrust_g = LMN_cg[1].thrust_g / rtn2;
+    cg[1].aileron_g = LMN_cg[1].aileron_g / rtn2;
+    cg[1].rudder_g = LMN_cg[1].rudder_g / rtn2;
+
+    
+    sg[2].U_g = (Ixz * LMN_g[0].U_g + Ixx * LMN_g[2].U_g) / rtn3;
+    sg[2].V_g = (Ixz * LMN_g[0].V_g + Ixx * LMN_g[2].V_g) / rtn3;
+    sg[2].W_g = (Ixz * LMN_g[0].W_g + Ixx * LMN_g[2].W_g) / rtn3;
+    sg[2].Roll_g = (Ixz * LMN_g[0].Roll_g + Ixx * LMN_g[2].Roll_g) / rtn3;
+    sg[2].Pitch_g = (Ixz * LMN_g[0].Pitch_g + Ixx * LMN_g[2].Pitch_g) / rtn3;
+    sg[2].Yaw_g = (Ixz * LMN_g[0].Yaw_g + Ixx * LMN_g[2].Yaw_g) / rtn3;
+
+    cg[2].elev_g = (Ixz * LMN_cg[0].elev_g + Ixx * LMN_cg[2].elev_g) / rtn3;
+    cg[2].thrust_g = (Ixz * LMN_cg[0].thrust_g + Ixx * LMN_cg[2].thrust_g) / rtn3;
+    cg[2].aileron_g = (Ixz * LMN_cg[0].aileron_g + Ixx * LMN_cg[2].aileron_g) / rtn3;
+    cg[2].rudder_g = (Ixz * LMN_cg[0].rudder_g + Ixx * LMN_cg[2].rudder_g) / rtn3;
+
+
+    sg[0].P_g = (rt12 * Q + Izz * LMN_g[0].P_g + Ixz * LMN_g[2].P_g) / rtn1;
+    sg[0].Q_g = (rt11 * R + rt12 * P + Izz * LMN_g[0].Q_g + Ixz * LMN_g[2].Q_g) / rtn1;
+    sg[0].R_g = (rt11 * Q + Izz * LMN_g[0].R_g + Ixz * LMN_g[2].R_g) / rtn1;
+    
+    sg[1].P_g = (rt21 * R - 2 * rt22 * P + LMN_g[1].P_g) / rtn2;
+    sg[1].Q_g = LMN_g[1].Q_g / rtn2;
+    sg[1].R_g = (rt21 * P + 2 * rt22 * R + LMN_g[1].R_g) / rtn2;
+    
+    sg[2].P_g = (rt31 * P + Ixz * LMN_g[0].U_g + Ixx * LMN_g[2].P_g) / rtn3;
+    sg[2].Q_g = (rt31 * P + rt32 * R + Ixz * LMN_g[0].V_g + Ixx * LMN_g[2].Q_g) / rtn3;
+    sg[2].R_g = (rt32 * Q + Ixz * LMN_g[0].W_g + Ixx * LMN_g[2].R_g) / rtn3;    
     
     return 0;
 }
@@ -1407,6 +1456,228 @@ int check_grad_compute_aero_forces(void)
 }
 
 
+int check_grad_rdyn(void)
+{
+    struct Vec3 uvw = {120, 90, 60};
+    real vac = sqrt(pow(uvw.v1, 2) + pow(uvw.v2, 2) + pow(uvw.v3, 2));
+
+    struct StateGrad vac_g;
+    vac_g.U_g = uvw.v1 / vac;
+    vac_g.V_g = uvw.v2 / vac;
+    vac_g.W_g = uvw.v3 / vac;
+   
+    
+    struct Vec3 pqr = {10, -2.0, 8.0};
+    struct Vec3 aero_con = {3.0, 1.0, 2.5};
+    real rho = 0.002376892406675; // slug / ft^3
+
+    struct Aircraft aircraft;
+    pioneer_uav(&aircraft);
+    
+    struct Vec3 DEL_ref;
+    struct Vec3 LMN_ref;
+    struct Vec3 rates_ref;
+
+    struct Vec3 DEL;
+    struct Vec3 LMN;    
+    struct Vec3 rates;
+    
+    struct StateGrad sg_f[6];
+    struct ControlGrad cg_f[6];
+    struct StateGrad sg[3];
+    struct ControlGrad cg[3];        
+
+    struct AeroAngles aero;
+
+    // Reference    
+    compute_aero_angles(&uvw, vac, &aero);
+    compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL_ref, &LMN_ref);
+    rdyn(&pqr, &LMN_ref, &aircraft, &rates_ref);
+
+    // Analytic
+    compute_aero_angles_g(&uvw, vac, &aero);
+    compute_aero_forces_g(&aero, &pqr, &aero_con, &aircraft, rho, vac, &vac_g, &DEL, &LMN, sg_f, cg_f);
+    rdyn_g(&pqr, &LMN, sg_f + 3, cg_f + 3, &aircraft, &rates, sg, cg);
+
+    printf("Checking value computation\n");
+    printf("Numerical %3.5E %3.5E %3.5E\n", rates_ref.v1, rates_ref.v2, rates_ref.v3);
+    printf("Analytic %3.5E %3.5E %3.5E\n", rates.v1, rates.v2, rates.v3);
+    printf("\n\n\n");
+    
+    /* double h = 1e-6; */
+    
+    /* double grad_U[6]; */
+    /* uvw.v1 += h; */
+    /* vac = sqrt(pow(uvw.v1, 2) + pow(uvw.v2, 2) + pow(uvw.v3, 2)); */
+    /* vac_g.U_g = uvw.v1 / vac; */
+    /* vac_g.V_g = uvw.v2 / vac; */
+    /* vac_g.W_g = uvw.v3 / vac; */
+    /* compute_aero_angles(&uvw, vac, &aero); */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);     */
+    /* grad_U[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_U[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_U[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_U[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_U[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_U[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to U\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_U[0], grad_U[1], grad_U[2], grad_U[3], grad_U[4], grad_U[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", sg[0].U_g, sg[1].U_g, sg[2].U_g, sg[3].U_g, sg[4].U_g, sg[5].U_g); */
+    /* printf("\n\n"); */
+    /* uvw.v1 -= h; */
+
+        
+    /* double grad_V[6]; */
+    /* uvw.v2 += h; */
+    /* vac = sqrt(pow(uvw.v1, 2) + pow(uvw.v2, 2) + pow(uvw.v3, 2)); */
+    /* vac_g.U_g = uvw.v1 / vac; */
+    /* vac_g.V_g = uvw.v2 / vac; */
+    /* vac_g.W_g = uvw.v3 / vac; */
+    /* compute_aero_angles(&uvw, vac, &aero); */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);     */
+    /* grad_V[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_V[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_V[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_V[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_V[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_V[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to V\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_V[0], grad_V[1], grad_V[2], grad_V[3], grad_V[4], grad_V[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", sg[0].V_g, sg[1].V_g, sg[2].V_g, sg[3].V_g, sg[4].V_g, sg[5].V_g); */
+    /* printf("\n\n"); */
+    /* uvw.v2 -= h; */
+
+    /* double grad_W[6]; */
+    /* uvw.v3 += h; */
+    /* vac = sqrt(pow(uvw.v1, 2) + pow(uvw.v2, 2) + pow(uvw.v3, 2)); */
+    /* vac_g.U_g = uvw.v1 / vac; */
+    /* vac_g.V_g = uvw.v2 / vac; */
+    /* vac_g.W_g = uvw.v3 / vac; */
+    /* compute_aero_angles(&uvw, vac, &aero); */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);     */
+    /* grad_W[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_W[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_W[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_W[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_W[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_W[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to W\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_W[0], grad_W[1], grad_W[2], grad_W[3], grad_W[4], grad_W[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", sg[0].W_g, sg[1].W_g, sg[2].W_g, sg[3].W_g, sg[4].W_g, sg[5].W_g); */
+    /* printf("\n\n"); */
+    /* uvw.v3 -= h;        */
+
+    /* // reset */
+    /* vac = sqrt(pow(uvw.v1, 2) + pow(uvw.v2, 2) + pow(uvw.v3, 2)); */
+    /* vac_g.U_g = uvw.v1 / vac; */
+    /* vac_g.V_g = uvw.v2 / vac; */
+    /* vac_g.W_g = uvw.v3 / vac;     */
+    /* compute_aero_angles(&uvw, vac, &aero); */
+
+
+    /* double grad_P[6]; */
+    /* pqr.v1 += h;     */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);         */
+    /* grad_P[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_P[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_P[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_P[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_P[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_P[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to P\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_P[0], grad_P[1], grad_P[2], grad_P[3], grad_P[4], grad_P[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", sg[0].P_g, sg[1].P_g, sg[2].P_g, sg[3].P_g, sg[4].P_g, sg[5].P_g); */
+    /* printf("\n\n"); */
+    /* pqr.v1 -= h; */
+    
+    /* double grad_Q[6]; */
+    /* pqr.v2 += h;     */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);         */
+    /* grad_Q[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_Q[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_Q[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_Q[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_Q[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_Q[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to Q\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_Q[0], grad_Q[1], grad_Q[2], grad_Q[3], grad_Q[4], grad_Q[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", sg[0].Q_g, sg[1].Q_g, sg[2].Q_g, sg[3].Q_g, sg[4].Q_g, sg[5].Q_g); */
+    /* printf("\n\n"); */
+    /* pqr.v2 -= h; */
+
+    /* double grad_R[6]; */
+    /* pqr.v3 += h;     */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);         */
+    /* grad_R[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_R[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_R[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_R[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_R[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_R[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to R\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_R[0], grad_R[1], grad_R[2], grad_R[3], grad_R[4], grad_R[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", sg[0].R_g, sg[1].R_g, sg[2].R_g, sg[3].R_g, sg[4].R_g, sg[5].R_g); */
+    /* printf("\n\n"); */
+    /* pqr.v3 -= h; */
+
+    /* double grad_el[6]; */
+    /* aero_con.v1 += h; */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);         */
+    /* grad_el[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_el[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_el[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_el[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_el[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_el[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to Elevator\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_el[0], grad_el[1], grad_el[2], grad_el[3], grad_el[4], grad_el[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", cg[0].elev_g, cg[1].elev_g, cg[2].elev_g, cg[3].elev_g, cg[4].elev_g, cg[5].elev_g); */
+    /* printf("\n\n"); */
+    /* aero_con.v1 -= h;     */
+
+    /* double grad_ail[6]; */
+    /* aero_con.v2 += h; */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);         */
+    /* grad_ail[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_ail[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_ail[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_ail[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_ail[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_ail[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to Aileron\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_ail[0], grad_ail[1], grad_ail[2], grad_ail[3], grad_ail[4], grad_ail[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", cg[0].aileron_g, cg[1].aileron_g, cg[2].aileron_g, cg[3].aileron_g, cg[4].aileron_g, cg[5].aileron_g); */
+    /* printf("\n\n"); */
+    /* aero_con.v2 -= h; */
+
+    /* double grad_rud[6]; */
+    /* aero_con.v3 += h; */
+    /* compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac, &DEL, &LMN);         */
+    /* grad_rud[0] = (DEL.v1 - DEL_ref.v1) / h; */
+    /* grad_rud[1] = (DEL.v2 - DEL_ref.v2) / h; */
+    /* grad_rud[2] = (DEL.v3 - DEL_ref.v3) / h; */
+    /* grad_rud[3] = (LMN.v1 - LMN_ref.v1) / h; */
+    /* grad_rud[4] = (LMN.v2 - LMN_ref.v2) / h; */
+    /* grad_rud[5] = (LMN.v3 - LMN_ref.v3) / h;     */
+
+    /* printf("Checking Gradient with respect to Rudder\n"); */
+    /* printf("Numerical %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", grad_rud[0], grad_rud[1], grad_rud[2], grad_rud[3], grad_rud[4], grad_rud[5]); */
+    /* printf("Analytic %3.5E %3.5E %3.5E %3.5E %3.5E %3.5E\n", cg[0].rudder_g, cg[1].rudder_g, cg[2].rudder_g, cg[3].rudder_g, cg[4].rudder_g, cg[5].rudder_g); */
+    /* printf("\n\n"); */
+    /* aero_con.v3 -= h;             */
+    
+    return 0;
+}
+
+
 int rigid_body_lin_forces(double time, const double * state,
                           const double * control,
                           double * out, double * jac,
@@ -1825,7 +2096,8 @@ int main(int argc, char* argv[]){
 
     /* check_grad_ac_to_e(); */
     /* check_grad_rkin(); */
-    check_grad_compute_aero_forces();
+    /* check_grad_compute_aero_forces(); */
+    check_grad_rdyn();
     return 0;
     
     int next_option;
