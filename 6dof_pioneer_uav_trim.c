@@ -2504,7 +2504,7 @@ double trim_objective_g(unsigned n, const double * x, double * grad, void * f_da
     
     double sol[12];
     double jac[144 + 48]; // states and controls
-    rigid_body_lin_forces(0.0, ic, control, sol, jac, data->ac);
+    rigid_body_lin_forces_jac(0.0, ic, control, sol, jac, data->ac);
 
     double out_trans = pow(sol[3], 2) + pow(sol[4], 2) + pow(sol[5], 2);
     // U, V, W equations
@@ -2517,9 +2517,9 @@ double trim_objective_g(unsigned n, const double * x, double * grad, void * f_da
     double out_rot = pow(sol[6], 2) + pow(sol[7], 2) + pow(sol[8], 2);
     // P, Q, R equations
     for (size_t jj = 0; jj < 12; jj++){
-        grad[jj] += 2 * sol[6] * jac[(jj+3)*12 + 6] +
+        grad[jj] = (2 * sol[6] * jac[(jj+3)*12 + 6] +
                     2 * sol[7] * jac[(jj+3)*12 + 7] +
-                   2 * sol[8] * jac[(jj+3)*12 + 8];
+                    2 * sol[8] * jac[(jj+3)*12 + 8]);
     }
     
     double out_trim = pow(sol[9], 2) + pow(sol[10], 2);
@@ -2654,11 +2654,13 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     // run without bounds
     /* opt = nlopt_create(NLOPT_LN_NELDERMEAD, 12); */
     opt = nlopt_create(NLOPT_LN_NEWUOA, 12);
-    nlopt_set_ftol_rel(opt, -1.0);
-    nlopt_set_ftol_abs(opt, 1e-20);
+    /* nlopt_set_ftol_rel(opt, -1.0); */
+    /* nlopt_set_ftol_abs(opt, 1e-20); */
     nlopt_set_lower_bounds(opt, lb);
-    nlopt_set_upper_bounds(opt, ub);    
+    nlopt_set_upper_bounds(opt, ub);
     nlopt_set_min_objective(opt, trim_objective, data);
+    nlopt_set_stopval(opt, 1e-8);
+    
     res = nlopt_optimize(opt, x, &val);
     nlopt_destroy(opt);
     for (size_t ii = 0; ii < 12; ii++){
@@ -2671,13 +2673,14 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     /* opt = nlopt_create(NLOPT_LN_NELDERMEAD, 12); */
     /* opt = nlopt_create(NLOPT_LN_SBPLX, 12); */
     opt = nlopt_create(NLOPT_LN_NEWUOA, 12);
+    /* opt = nlopt_create(NLOPT_LD_LBFGS, 12); */
     nlopt_set_ftol_rel(opt, -1.0);
     nlopt_set_ftol_abs(opt, 0.0);
-    nlopt_set_xtol_abs1(opt, 1e-20);
 
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_upper_bounds(opt, ub);
     nlopt_set_min_objective(opt, trim_objective, data);
+    /* nlopt_set_min_objective(opt, trim_objective_g, data); */
 
     res = nlopt_optimize(opt, x, &val);
     nlopt_destroy(opt);
