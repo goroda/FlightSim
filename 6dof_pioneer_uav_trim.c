@@ -1891,7 +1891,7 @@ int check_grad_rdyn(void)
 
     struct AeroAngles aero;
 
-    // Reference    
+    // Reference
     compute_aero_angles(&uvw, vac, &aero);
     compute_aero_forces(&aero, &pqr, &aero_con, &aircraft, rho, vac,
                         &DEL_ref, &LMN_ref);
@@ -2141,6 +2141,272 @@ int rigid_body_lin_forces(double time, const double * state,
     return 0;
 }
 
+int rigid_body_lin_forces_jac(double time,
+                              const double * state,
+                              const double * control,
+                              double * out, double * jac,
+                              void * arg)
+{
+    (void) time;
+    /* assert (jac == NULL); */
+
+    struct Aircraft * ac = arg;
+    
+    struct Vec3 UVW = {state[3], state[4], state[5]};
+    real vac = vec3_norm(&UVW);
+    struct StateGrad vac_g;
+    vac_g.U_g = UVW.v1 / vac;
+    vac_g.V_g = UVW.v2 / vac;
+    vac_g.W_g = UVW.v3 / vac;
+    
+    struct AeroAngles aero;
+    compute_aero_angles_g(&UVW, vac, &vac_g, &aero);
+
+    #ifdef DEBUG
+    printf("aoa = %3.2E\n", aero.aoa);
+    printf("beta = %3.2E\n", aero.sideslip);
+    #endif
+    
+    struct Vec3 PQR = {state[6], state[7], state[8]};
+    struct EulerAngles ea;
+    ea.roll = state[9];
+    ea.pitch = state[10];
+    ea.yaw = state[11];
+    euler_angles_precompute_g(&ea);
+
+
+    /////////////////////////////
+    // Kinematics
+    ////////////////////////////
+    struct StateGrad sg_tkin[3];
+    struct Vec3 xyz_rates;
+    tkin_g(&ea, &UVW, &xyz_rates, sg_tkin);
+
+    struct StateGrad sg_rkin[3];    
+    struct Vec3 euler_rates;
+    rkin_g(&ea, &PQR, &euler_rates, sg_rkin);
+
+    /////////////////////////////
+    // Dynamics
+    ////////////////////////////
+
+    // Force and Moment Computation
+    struct Vec3 DEL = {0, 0, 0};
+    struct Vec3 LMN = {0, 0, 0};    
+    real rho = 0.002376892406675; // slug / ft^3
+
+    // elevator, aileron, rudder
+    struct Vec3 aero_con = {control[0], control[1], control[2]};
+    // Thrust
+    real Ft = control[3]; 
+
+    struct StateGrad forces[6];
+    struct ControlGrad forces_c[6];
+    compute_aero_forces_g(&aero, &PQR, &aero_con, ac, rho, vac,
+                          &vac_g, &DEL, &LMN, forces, forces_c);
+
+    // Momentum equations
+    struct Vec3 uvw_rates;
+    struct StateGrad tmom[3];
+    struct ControlGrad tmom_c[3];    
+    tdyn_g(&ea, &aero, &vac_g, &UVW, &PQR, &DEL, forces, forces_c, Ft, ac, &uvw_rates, tmom, tmom_c);
+
+    struct Vec3 pqr_rates;
+    struct StateGrad rmom[3];
+    struct ControlGrad rmom_c[3];
+    rdyn_g(&PQR, &LMN, forces + 3, forces_c + 3, ac, &pqr_rates, rmom, rmom_c);
+
+    // recall states are x y z U V W P Q R roll pitch yaw
+    out[0] = xyz_rates.v1;
+    out[1] = xyz_rates.v2;
+    out[2] = xyz_rates.v3;
+
+    out[3] = uvw_rates.v1;
+    out[4] = uvw_rates.v2;
+    out[5] = uvw_rates.v3;
+
+    out[6] = pqr_rates.v1;
+    out[7] = pqr_rates.v2;
+    out[8] = pqr_rates.v3;
+
+    out[9]  = euler_rates.v1;
+    out[10] = euler_rates.v2;
+    out[11] = euler_rates.v3;
+
+
+    // jacobian is column major order
+    // d / dx, d / dy, d/dz
+    for (size_t ii = 0; ii < 36; ii++){
+        jac[ii] = 0.0;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // U
+        jac[36 + ii] = sg_tkin[ii].U_g;
+        jac[39 + ii] = tmom[ii].U_g;
+        jac[42 + ii] = rmom[ii].U_g;
+        jac[45 + ii] = sg_rkin[ii].U_g;
+    }
+    
+    for (size_t ii = 0; ii < 3; ii++){
+        // V
+        jac[48 + ii] = sg_tkin[ii].V_g;
+        jac[51 + ii] = tmom[ii].V_g;
+        jac[54 + ii] = rmom[ii].V_g;
+        jac[57 + ii] = sg_rkin[ii].V_g;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // W
+        jac[60 + ii] = sg_tkin[ii].W_g;
+        jac[63 + ii] = tmom[ii].W_g;
+        jac[66 + ii] = rmom[ii].W_g;
+        jac[69 + ii] = sg_rkin[ii].W_g;        
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // P
+        jac[72 + ii] = sg_tkin[ii].P_g;
+        jac[75 + ii] = tmom[ii].P_g;
+        jac[78 + ii] = rmom[ii].P_g;
+        jac[81 + ii] = sg_rkin[ii].P_g;        
+    }
+    
+    for (size_t ii = 0; ii < 3; ii++){
+        // Q
+        jac[84 + ii] = sg_tkin[ii].Q_g;
+        jac[87 + ii] = tmom[ii].Q_g;
+        jac[90 + ii] = rmom[ii].Q_g;
+        jac[93 + ii] = sg_rkin[ii].Q_g;        
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // R
+        jac[96 + ii] = sg_tkin[ii].R_g;
+        jac[99 + ii] = tmom[ii].R_g;
+        jac[102 + ii] = rmom[ii].R_g;
+        jac[105 + ii] = sg_rkin[ii].R_g;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // roll
+        jac[108 + ii] = sg_tkin[ii].Roll_g;
+        jac[111 + ii] = tmom[ii].Roll_g;
+        jac[114 + ii] = rmom[ii].Roll_g;
+        jac[117 + ii] = sg_rkin[ii].Roll_g;        
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // pitch
+        jac[120 + ii] = sg_tkin[ii].Pitch_g;
+        jac[123 + ii] = tmom[ii].Pitch_g;
+        jac[126 + ii] = rmom[ii].Pitch_g;
+        jac[129 + ii] = sg_rkin[ii].Pitch_g;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // pitch
+        jac[132 + ii] = sg_tkin[ii].Yaw_g;
+        jac[135 + ii] = tmom[ii].Yaw_g;
+        jac[138 + ii] = rmom[ii].Yaw_g;
+        jac[141 + ii] = sg_rkin[ii].Yaw_g;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // elevator
+        jac[144 + ii] = 0.0;
+        jac[147 + ii] = tmom_c[ii].elev_g;
+        jac[150 + ii] = rmom_c[ii].elev_g;
+        jac[153 + ii] = 0.0;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // aileron
+        jac[156 + ii] = 0.0;
+        jac[159 + ii] = tmom_c[ii].aileron_g;
+        jac[162 + ii] = rmom_c[ii].aileron_g;
+        jac[165 + ii] = 0.0;
+    }
+    
+    for (size_t ii = 0; ii < 3; ii++){
+        // rudder
+        jac[168 + ii] = 0.0;
+        jac[171 + ii] = tmom_c[ii].rudder_g;
+        jac[174 + ii] = rmom_c[ii].rudder_g;
+        jac[177 + ii] = 0.0;
+    }
+
+    for (size_t ii = 0; ii < 3; ii++){
+        // thrust
+        jac[180 + ii] = 0.0;
+        jac[183 + ii] = tmom_c[ii].thrust_g;
+        jac[186 + ii] = rmom_c[ii].thrust_g;
+        jac[189 + ii] = 0.0;
+    }
+
+    return 0;
+}
+
+int check_grad_rigid_body_dyn(void)
+{
+    real time = 0.0;
+    real state[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+                      7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+
+    // elevator aileron rudder thrust
+    real control[4] = {1.5, 2.5, 3.5, 4.5};
+
+    real out_ref[12];
+    real out[12];
+    real jac[144+48];
+
+    struct Aircraft aircraft;
+    pioneer_uav(&aircraft);
+
+    rigid_body_lin_forces(time, state, control, out_ref, NULL, &aircraft);
+    rigid_body_lin_forces_jac(time, state, control, out, jac, &aircraft);
+
+    printf("Checking value computation\n");
+    for (size_t ii = 0; ii < 12; ii++){
+        printf("%10.5E %10.5E %10.5E \n", out_ref[ii], out[ii],
+               out[ii] - out_ref[ii]);
+    }
+
+    printf("Checking gradient computation\n");    
+    real h = 1e-8;
+    for (size_t ii = 0; ii < 12; ii++){
+        state[ii] += h;
+        rigid_body_lin_forces(time, state, control, out, NULL, &aircraft);
+        printf("\n\n\n");
+        printf("ii = %zu\n", ii);
+        for (size_t jj = 0; jj < 12; jj++){
+            real val = (out[jj] - out_ref[jj]) / h;
+            printf("\t %10.5E %10.5E %10.5E\n", val, jac[ii*12+jj], (val - jac[ii*12 + jj])/val);
+        }
+        state[ii] -= h;
+    }
+
+    printf("\n");
+    printf("--------------------------\n");
+    printf("Gradient wrt controls\n");
+    printf("--------------------------\n");
+    printf("\n");
+    for (size_t ii = 0; ii < 4; ii++){
+        control[ii] += h;
+        rigid_body_lin_forces(time, state, control, out, NULL, &aircraft);
+        printf("\n\n\n");
+        printf("ii = %zu\n", ii);
+        for (size_t jj = 0; jj < 12; jj++){
+            real val = (out[jj] - out_ref[jj]) / h;
+            printf("\t %10.5E %10.5E %10.5E\n", val, jac[144 + ii*12+jj],
+                   (val - jac[144 + ii*12 + jj])/val);
+        }
+        control[ii] -= h;
+    }    
+    
+
+    return 0;
+}
 
 struct TrimSpec
 {
@@ -2481,8 +2747,8 @@ int main(int argc, char* argv[]){
     /* check_grad_rkin(); */
     /* check_grad_compute_aero_forces(); */
     /* check_grad_rdyn(); */
-    check_grad_tdyn();
-    
+    /* check_grad_tdyn(); */
+    check_grad_rigid_body_dyn();
     return 0;
     
     int next_option;
