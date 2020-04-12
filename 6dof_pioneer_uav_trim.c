@@ -45,9 +45,9 @@ struct StateGrad
 struct ControlGrad
 {
     real elev_g;
-    real thrust_g;
     real aileron_g;
     real rudder_g;
+    real thrust_g;    
 };
 
 
@@ -2471,6 +2471,7 @@ double trim_objective(unsigned n, const double * x, double * grad, void * f_data
     double out = out_trans + out_rot + out_trim + out_zdot + out_yawdot + out_vel + out_sideslip;
 
     /* printf("out = %3.5E\n", out); */
+    /* double out = out_trans; */
     return out;
 }
 
@@ -2508,35 +2509,56 @@ double trim_objective_g(unsigned n, const double * x, double * grad, void * f_da
 
     double out_trans = pow(sol[3], 2) + pow(sol[4], 2) + pow(sol[5], 2);
     // U, V, W equations
-    for (size_t jj = 0; jj < 12; jj++){
+    for (size_t jj = 0; jj < 9; jj++){
         grad[jj] = 2 * sol[3] * jac[(jj+3)*12 + 3] +
                    2 * sol[4] * jac[(jj+3)*12 + 4] +
                    2 * sol[5] * jac[(jj+3)*12 + 5];
     }
+    for (size_t jj = 0; jj < 4; jj++){
+        grad[jj+8] += 2 * sol[3] * jac[(12+jj)*12 + 3] +
+                      2 * sol[4] * jac[(12+jj)*12 + 4] +
+                      2 * sol[5] * jac[(12+jj)*12 + 5];
+    }
     
     double out_rot = pow(sol[6], 2) + pow(sol[7], 2) + pow(sol[8], 2);
     // P, Q, R equations
-    for (size_t jj = 0; jj < 12; jj++){
-        grad[jj] = (2 * sol[6] * jac[(jj+3)*12 + 6] +
-                    2 * sol[7] * jac[(jj+3)*12 + 7] +
-                    2 * sol[8] * jac[(jj+3)*12 + 8]);
+    for (size_t jj = 0; jj < 9; jj++){
+        grad[jj] += (2 * sol[6] * jac[(jj+3)*12 + 6] +
+                     2 * sol[7] * jac[(jj+3)*12 + 7] +
+                     2 * sol[8] * jac[(jj+3)*12 + 8]);
     }
+
+    for (size_t jj = 0; jj < 4; jj++){
+        grad[jj+8] += (2 * sol[6] * jac[(12+jj)*12 + 6] +
+                       2 * sol[7] * jac[(12+jj)*12 + 7] +
+                       2 * sol[8] * jac[(12+jj)*12 + 8]);
+    }    
     
     double out_trim = pow(sol[9], 2) + pow(sol[10], 2);
     // Roll and pitch equations
-    for (size_t jj = 0; jj < 12; jj++){
+    for (size_t jj = 0; jj < 9; jj++){
         grad[jj] += 2 * sol[9] * jac[(jj+3)*12 + 9] +
                     2 * sol[10] * jac[(jj+3)*12 + 10];
     }
+    for (size_t jj = 0; jj < 4; jj++){
+        grad[jj+8] += 2 * sol[9] * jac[(jj+12)*12 + 9] +
+                      2 * sol[10] * jac[(jj+12)*12 + 10];
+    }
     
     double out_zdot = pow(sol[2] - data->z_dot, 2);
-    for (size_t jj = 0; jj < 12; jj++){
+    for (size_t jj = 0; jj < 9; jj++){
         grad[jj] += 2 * (sol[2] - data->z_dot) * jac[(jj+3)*12 + 2];
+    }
+    for (size_t jj = 0; jj < 4; jj++){
+        grad[jj+8] += 2 * (sol[2] - data->z_dot) * jac[(jj+12)*12 + 2];
     }
     
     double out_yawdot = pow(sol[11] - data->yaw_dot, 2);
-    for (size_t jj = 0; jj < 12; jj++){
+    for (size_t jj = 0; jj < 9; jj++){
         grad[jj] += 2 * (sol[11] - data->yaw_dot) * jac[(jj+3)*12 + 11];
+    }
+    for (size_t jj = 0; jj < 4; jj++){
+        grad[jj+8] += 2 * (sol[11] - data->yaw_dot) * jac[(jj+12)*12 + 11];
     }
     
     double vel = sqrt(pow(x[0], 2) + pow(x[1], 2) + pow(x[2], 2));
@@ -2553,6 +2575,44 @@ double trim_objective_g(unsigned n, const double * x, double * grad, void * f_da
     return out;
 }
 
+int check_grad_trimmer(void)
+{
+    real input[12] = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0,
+                      7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+
+    // elevator aileron rudder thrust
+    real out_ref;
+    real out;
+    real grad[12];
+
+    struct Aircraft aircraft;
+    pioneer_uav(&aircraft);
+
+    struct TrimSpec trim_spec;
+    trim_spec.z_dot = 5.0;
+    trim_spec.yaw_dot = 3.0; 
+    trim_spec.target_vel = 120.0;
+    trim_spec.ac = &aircraft;
+    trim_spec.thresh = 1e-14;     
+
+    out_ref = trim_objective(12, input, NULL, &trim_spec);
+    out = trim_objective_g(12, input, grad, &trim_spec);
+    printf("Checking value computation\n");
+    printf("%10.5E %10.5E \n", out_ref, out);
+
+    printf("Checking gradient computation\n");
+    real h = 1e-8;
+    for (size_t ii = 0; ii < 12; ii++){
+        input[ii] += h;
+        out = trim_objective(12, input, NULL, &trim_spec);
+        real val = (out - out_ref) / h;        
+        printf("\t %10.5E %10.5E\n", val, grad[ii]);
+        input[ii] -= h;
+    }
+
+
+    return 0;
+}
 
 struct SteadyState
 {
@@ -2831,7 +2891,8 @@ int main(int argc, char* argv[]){
     /* check_grad_rdyn(); */
     /* check_grad_tdyn(); */
     /* check_grad_rigid_body_dyn(); */
-    /* return 0; */
+    check_grad_trimmer();
+    return 0;
     
     int next_option;
     const char * const short_options = "hs:c:y:t:";
