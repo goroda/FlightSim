@@ -2474,6 +2474,85 @@ double trim_objective(unsigned n, const double * x, double * grad, void * f_data
     return out;
 }
 
+double trim_objective_g(unsigned n, const double * x, double * grad, void * f_data)
+{
+    if (grad == NULL){
+        return trim_objective(n, x, grad, f_data);
+    }
+    
+    struct TrimSpec * data = f_data;
+
+    double ic[12];
+    ic[0] = 0.0; // x
+    ic[1] = 0.0; // y
+    ic[2] = 0.0; // z
+    ic[3] = x[0]; // u
+    ic[4] = x[1]; // v
+    ic[5] = x[2]; // w
+    ic[6] = x[3]; // p
+    ic[7] = x[4]; // q
+    ic[8] = x[5]; // r
+    ic[9] = x[6]; // roll
+    ic[10] = x[7]; // pitch
+    ic[11] = 0.0; //yaw
+
+    double control[4];
+    control[0] = x[8];
+    control[1] = x[9];
+    control[2] = x[10];
+    control[3] = x[11];
+    
+    double sol[12];
+    double jac[144 + 48]; // states and controls
+    rigid_body_lin_forces(0.0, ic, control, sol, jac, data->ac);
+
+    double out_trans = pow(sol[3], 2) + pow(sol[4], 2) + pow(sol[5], 2);
+    // U, V, W equations
+    for (size_t jj = 0; jj < 12; jj++){
+        grad[jj] = 2 * sol[3] * jac[(jj+3)*12 + 3] +
+                   2 * sol[4] * jac[(jj+3)*12 + 4] +
+                   2 * sol[5] * jac[(jj+3)*12 + 5];
+    }
+    
+    double out_rot = pow(sol[6], 2) + pow(sol[7], 2) + pow(sol[8], 2);
+    // P, Q, R equations
+    for (size_t jj = 0; jj < 12; jj++){
+        grad[jj] += 2 * sol[6] * jac[(jj+3)*12 + 6] +
+                    2 * sol[7] * jac[(jj+3)*12 + 7] +
+                   2 * sol[8] * jac[(jj+3)*12 + 8];
+    }
+    
+    double out_trim = pow(sol[9], 2) + pow(sol[10], 2);
+    // Roll and pitch equations
+    for (size_t jj = 0; jj < 12; jj++){
+        grad[jj] += 2 * sol[9] * jac[(jj+3)*12 + 9] +
+                    2 * sol[10] * jac[(jj+3)*12 + 10];
+    }
+    
+    double out_zdot = pow(sol[2] - data->z_dot, 2);
+    for (size_t jj = 0; jj < 12; jj++){
+        grad[jj] += 2 * (sol[2] - data->z_dot) * jac[(jj+3)*12 + 2];
+    }
+    
+    double out_yawdot = pow(sol[11] - data->yaw_dot, 2);
+    for (size_t jj = 0; jj < 12; jj++){
+        grad[jj] += 2 * (sol[11] - data->yaw_dot) * jac[(jj+3)*12 + 11];
+    }
+    
+    double vel = sqrt(pow(x[0], 2) + pow(x[1], 2) + pow(x[2], 2));
+    double out_vel = pow(vel - data->target_vel, 2);
+    for (size_t jj = 0; jj < 3; jj++){
+        grad[jj] += 2 * (vel -data->target_vel) * x[jj] / vel;
+    }
+    
+    double out_sideslip = pow(x[1], 2);
+    grad[1] += 2 * x[1];
+    
+    double out = out_trans + out_rot + out_trim + out_zdot + out_yawdot + out_vel + out_sideslip;
+
+    return out;
+}
+
 
 struct SteadyState
 {
@@ -2748,8 +2827,8 @@ int main(int argc, char* argv[]){
     /* check_grad_compute_aero_forces(); */
     /* check_grad_rdyn(); */
     /* check_grad_tdyn(); */
-    check_grad_rigid_body_dyn();
-    return 0;
+    /* check_grad_rigid_body_dyn(); */
+    /* return 0; */
     
     int next_option;
     const char * const short_options = "hs:c:y:t:";
@@ -2800,9 +2879,6 @@ int main(int argc, char* argv[]){
 
     } while (next_option != -1);
 
-    
-
-    
     struct Aircraft aircraft;
     pioneer_uav(&aircraft);
     struct TrimSpec trim_spec;
