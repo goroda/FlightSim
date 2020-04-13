@@ -38,7 +38,7 @@ struct TrimSpec
     real thresh;
 };
 
-inline real trim_spec_get_climb_rate(const struct TrimSpec * spec){ return spec->z_dot; }
+inline real trim_spec_get_climb_rate(const struct TrimSpec * spec){ return -spec->z_dot; }
 inline real trim_spec_get_yaw_rate(const struct TrimSpec * spec){ return spec->yaw_dot; }
 inline real trim_spec_get_speed(const struct TrimSpec * spec){ return spec->target_vel; }
 
@@ -209,7 +209,7 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "Spec                :        Targets          Achieved   \n");
     fprintf(fp, "---------------------------------------------------------\n");    
     fprintf(fp, "Speed       (ft/s)  :       %3.5E      %3.5E\n", ss->target_speed, ss->achieved_speed);
-    fprintf(fp, "-Climb Rate (ft/s)  :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
+    fprintf(fp, "Climb Rate  (ft/s)  :       %3.5E      %3.5E\n", ss->target_climb_rate, ss->achieved_climb_rate);
     fprintf(fp, "Yaw Rate    (rad/s) :       %3.5E      %3.5E\n", ss->target_yaw_rate, ss->achieved_yaw_rate);
 
         
@@ -236,8 +236,10 @@ int steady_state_print(FILE * fp, const struct SteadyState * ss)
     fprintf(fp, "\n\n\n");
     fprintf(fp, "Derived Quantities :\n");
     fprintf(fp, "---------------------------------------------------------------\n");
-    fprintf(fp, "Angle of Attack (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.aoa, rad2deg(ss->aero.aoa));
-    fprintf(fp, "Sideslip Angle  (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.sideslip, rad2deg(ss->aero.sideslip));
+    fprintf(fp, "Angle of Attack   (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.aoa, rad2deg(ss->aero.aoa));
+    fprintf(fp, "Sideslip Angle    (rad,deg) :   %3.5E \t %3.5E\n", ss->aero.sideslip, rad2deg(ss->aero.sideslip));
+    fprintf(fp, "Flight Path Angle (rad,deg) :   %3.5E \t %3.5E\n", ss->flight_path_angle, rad2deg(ss->flight_path_angle));
+    fprintf(fp, "Bank Angle        (rad,deg) :   %3.5E \t %3.5E\n", ss->bank_angle, rad2deg(ss->bank_angle));
 
     fprintf(fp, "\n");
     fprintf(fp, "===============================================================\n");
@@ -354,7 +356,7 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     ss->thrust = x[11];
 
     ss->target_climb_rate = trim_spec_get_climb_rate(data);
-    ss->achieved_climb_rate = sol[2];
+    ss->achieved_climb_rate = -sol[2];
     
     ss->target_yaw_rate = trim_spec_get_yaw_rate(data);
     ss->achieved_yaw_rate = sol[11];
@@ -363,6 +365,18 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     ss->achieved_speed = sqrt(pow(x[0],2) + pow(x[1], 2) + pow(x[2], 2));
 
     aero_angles(&(ss->UVW), ss->achieved_speed, &(ss->aero));
+
+    ss->flight_path_angle = asin(-sol[2] / ss->achieved_speed);
+
+
+    // 0 1 2 3 4 5 6    7
+    // U V W P Q R Roll Pitch
+    real ca = cos(ss->aero.aoa);
+    real sa = sin(ss->aero.aoa);
+    real num = ca * cos(x[7]) * cos(x[6]) + sa * sin(x[7]);
+    real den = cos(ss->flight_path_angle);                                                         
+
+    ss->bank_angle = acos(num / den);
     
     return 0;
 }
@@ -544,7 +558,7 @@ int main(int argc, char* argv[]){
     struct Aircraft aircraft;
     pioneer_uav(&aircraft);
     struct TrimSpec trim_spec;
-    trim_spec.z_dot = climb_rate;
+    trim_spec.z_dot = -climb_rate;
     trim_spec.yaw_dot = yaw_rate; ///3.0 * 2.0 * M_PI / 500.0;
     trim_spec.target_vel = speed; // ft/s
     trim_spec.ac = &aircraft;

@@ -50,8 +50,6 @@ inline real steady_state_get_rudder(const struct SteadyState * ss){return ss->ae
 inline real steady_state_get_thrust(const struct SteadyState * ss){return ss->thrust;}
 
 
-
-
 inline real aircraft_get_mass(const struct Aircraft* ac){ return ac->m; };
 
 inline real aircraft_get_cphit(const struct Aircraft* ac){ return ac->cphit; };
