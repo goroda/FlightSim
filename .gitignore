@@ -4,3 +4,4 @@
 *ac_trim
 check_grad
 *.o
+*.dat

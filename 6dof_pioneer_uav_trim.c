@@ -474,8 +474,7 @@ void print_code_usage (FILE * stream, int exit_code)
             " -y --yaw-rate   <val>    Desired turn rate (e.g., 3.14 --> turn 'right' at pi rad/s), default 0.\n"
             " -t --threshold  <val>    Threshold value for setting states to zero default 1e-10.\n"
             " --linearize              Return linear system\n"
-            " --simulate "
-            /* " -v --verbose    <val>      Output words (default 0)\n" */
+            " --simulate      <file>   Simulate the system and print to file\n"
         );
     exit (exit_code);
 }
@@ -491,7 +490,8 @@ int main(int argc, char* argv[]){
         { "climb-rate" , 1, NULL, 'c' },
         { "yaw-rate"   , 1, NULL, 'y' },
         { "threshold"  , 1, NULL, 't' },
-        { "linearize"  , 0, NULL, 'l' },        
+        { "linearize"  , 0, NULL, 'l' },
+        { "simulate"   , 1, NULL, 1 },        
         /* { "verbose"    , 1, NULL, 'v' }, */
         { NULL         , 0, NULL, 0   }
     };
@@ -502,6 +502,7 @@ int main(int argc, char* argv[]){
     real yaw_rate = 0.0;
     real thresh = 1e-10; // threshold for zero
     int linearize = 0;
+    char * sim_name = NULL;
     do {
         next_option = getopt_long (argc, argv, short_options, long_options, NULL);
         switch (next_option)
@@ -522,7 +523,10 @@ int main(int argc, char* argv[]){
                 break;
             case 'l':
                 linearize = 1;
-                break;                                          
+                break;
+            case 1:
+                sim_name = optarg;
+                break;                 
             /* case 'v': */
             /*     verbose = strtol(optarg,NULL,10); */
             /*     break; */
@@ -581,17 +585,34 @@ int main(int argc, char* argv[]){
         
     }
 
-    int simulate = 1;
-    if (simulate == 1){
+    if (sim_name != NULL){
+
+        fprintf(stdout, "========================================================\n");
+        fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n");
+        fprintf(stdout, "========================================================\n");
         struct Vec3 xyz = {0, 0, -5};
         real yaw = M_PI / 4.0;
         double dt_save = 1e-1;
         size_t nsteps = 1000;
         struct Trajectory * traj = flight_sim_ss(&xyz, yaw, &ss, &aircraft, dt_save, nsteps);
 
-        trajectory_print(traj,stdout,5);
+        char filename[256];
+        sprintf(filename, "nrb_%s",sim_name);
+        printf("Saving simulationt to %s\n", filename);
+        FILE * fp = fopen(filename, "w");
+
+        if (fp == NULL){
+            fprintf(stdout, "Cannot open file %s\n", filename);
+            return 1;
+        }
+        fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
+                "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");        
+        trajectory_print(traj, fp, 10);
         trajectory_free(traj); traj = NULL;
+        fclose(fp);
+        printf("\n\n");
     }
+
 
     return 0;
     
