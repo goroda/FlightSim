@@ -3,3 +3,4 @@
 *.sh
 *ac_trim
 check_grad
+*.o

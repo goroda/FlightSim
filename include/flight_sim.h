@@ -14,7 +14,7 @@
 #include <nlopt.h>
 
 typedef double real;
-inline real rad2deg(real ang);
+real rad2deg(real ang);
 
 struct Vec3 {
     real v1;
@@ -125,18 +125,18 @@ struct SteadyState
     real aoa;
     real sideslip;
 };
-inline real steady_state_get_U(const struct SteadyState * ss);
-inline real steady_state_get_V(const struct SteadyState * ss);
-inline real steady_state_get_W(const struct SteadyState * ss);
-inline real steady_state_get_P(const struct SteadyState * ss);
-inline real steady_state_get_Q(const struct SteadyState * ss);
-inline real steady_state_get_R(const struct SteadyState * ss);
-inline real steady_state_get_Roll(const struct SteadyState * ss);
-inline real steady_state_get_Pitch(const struct SteadyState * ss);
-inline real steady_state_get_elevator(const struct SteadyState * ss);
-inline real steady_state_get_aileron(const struct SteadyState * ss);
-inline real steady_state_get_rudder(const struct SteadyState * ss);
-inline real steady_state_get_thrust(const struct SteadyState * ss);
+real steady_state_get_U(const struct SteadyState * ss);
+real steady_state_get_V(const struct SteadyState * ss);
+real steady_state_get_W(const struct SteadyState * ss);
+real steady_state_get_P(const struct SteadyState * ss);
+real steady_state_get_Q(const struct SteadyState * ss);
+real steady_state_get_R(const struct SteadyState * ss);
+real steady_state_get_Roll(const struct SteadyState * ss);
+real steady_state_get_Pitch(const struct SteadyState * ss);
+real steady_state_get_elevator(const struct SteadyState * ss);
+real steady_state_get_aileron(const struct SteadyState * ss);
+real steady_state_get_rudder(const struct SteadyState * ss);
+real steady_state_get_thrust(const struct SteadyState * ss);
 
 struct Aircraft
 {

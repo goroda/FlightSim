@@ -44,6 +44,7 @@ inline real trim_spec_get_speed(const struct TrimSpec * spec){ return spec->targ
 
 double trim_objective(unsigned n, const double * x, double * grad, void * f_data)
 {
+    (void) n;
     assert (grad == NULL);
     
     struct TrimSpec * data = f_data;
@@ -472,7 +473,8 @@ void print_code_usage (FILE * stream, int exit_code)
             " -c --climb-rate <val>    Desired climb rate (e.g., -5 --> climb at 5 ft/s), default 0.\n"
             " -y --yaw-rate   <val>    Desired turn rate (e.g., 3.14 --> turn 'right' at pi rad/s), default 0.\n"
             " -t --threshold  <val>    Threshold value for setting states to zero default 1e-10.\n"
-            " -l --linearize  <int>    Return linear system. default 0\n"
+            " --linearize              Return linear system\n"
+            " --simulate "
             /* " -v --verbose    <val>      Output words (default 0)\n" */
         );
     exit (exit_code);
@@ -482,14 +484,14 @@ int main(int argc, char* argv[]){
 
 
     int next_option;
-    const char * const short_options = "hs:c:y:t:l:";
+    const char * const short_options = "hs:c:y:t:";
     const struct option long_options[] = {
         { "help"       ,  0, NULL, 'h' },
         { "speed"      , 1, NULL, 's' },
         { "climb-rate" , 1, NULL, 'c' },
         { "yaw-rate"   , 1, NULL, 'y' },
         { "threshold"  , 1, NULL, 't' },
-        { "linearize"  , 1, NULL, 'l' },        
+        { "linearize"  , 0, NULL, 'l' },        
         /* { "verbose"    , 1, NULL, 'v' }, */
         { NULL         , 0, NULL, 0   }
     };
@@ -519,7 +521,7 @@ int main(int argc, char* argv[]){
                 thresh = atof(optarg);
                 break;
             case 'l':
-                linearize = atoi(optarg);
+                linearize = 1;
                 break;                                          
             /* case 'v': */
             /*     verbose = strtol(optarg,NULL,10); */
@@ -579,7 +581,7 @@ int main(int argc, char* argv[]){
         
     }
 
-    int simulate = 0;    
+    int simulate = 1;
     if (simulate == 1){
         struct Vec3 xyz = {0, 0, -5};
         real yaw = M_PI / 4.0;

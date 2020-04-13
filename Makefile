@@ -1,10 +1,30 @@
-all: ac_trim check_grad
+IDIR=include
+CC=gcc
+CFLAGS=-O2 
 
-ac_trim:
-	gcc -O2 6dof_pioneer_uav_trim.c flight_sim.c vehicles.c -lm -lcdyn -lnlopt -o ac_trim
+ODIR=obj
+LDIR=./
 
-check_grad:
-	gcc -O2 check_gradient_rigid_body.c flight_sim.c vehicles.c -lm -lcdyn -lnlopt -o check_grad
+LIBS=-lm -lcdyn -lnlopt
+
+_DEPS = flight_sim.h vehicles.h
+DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
+
+_OBJ = flight_sim.o vehicles.o 
+OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
+
+
+$(ODIR)/%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+ac_trim: $(OBJ) 6dof_pioneer_uav_trim.c
+	$(CC) -o ac_trim 6dof_pioneer_uav_trim.c $(OBJ) $(CFLAGS) $(LIBS)
+
+check_grad: $(OBJ) check_gradient_rigid_body.c
+	$(CC) -o check_grad check_gradient_rigid_body.c $(OBJ) $(CFLAGS) $(LIBS)
+
+
+.PHONY: clean
 
 clean:
-	rm -f *.out
+	rm -f $(ODIR)/*.o *- core $(INCDIR)/*-
