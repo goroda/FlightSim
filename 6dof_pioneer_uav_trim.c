@@ -702,7 +702,10 @@ int main(int argc, char* argv[]){
                 return 1;                
             }
 
-            traj = flight_sim_lin(&xyz, yaw, &ss, &aircraft, dt_save, nsteps, jac);
+            struct Vec3 xyz_perturbed = {0, 0, 0};
+            real yaw_perturbed = 0.0;
+            traj = flight_sim_lin(&xyz_perturbed, yaw_perturbed, &ss, &aircraft,
+                                  dt_save, nsteps, jac);
             fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
                     "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");
             
