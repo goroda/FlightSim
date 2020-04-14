@@ -1270,3 +1270,33 @@ int rigid_body_lin_forces_jac(double time,
 
     return 0;
 }
+
+int rigid_body_linearized(double time, const double * state,
+               const double * control,
+               double * out, double * jac,
+               void * arg)
+{
+    (void) time;
+    assert (jac == NULL);
+
+    real * AB = arg;
+
+    for (size_t ii = 0; ii < 12; ii++){
+        out[ii] = 0.0;
+    }
+    
+    for (size_t ii = 0; ii < 12; ii++){
+        for (size_t jj = 0; jj < 12; jj++){
+            out[jj] += jac[ii*12 + jj] * state[jj];
+        }
+    }
+
+    real * B = AB + 144;
+    for (size_t ii = 0; ii < 4; ii++){
+        for (size_t jj = 0; jj < 12; jj++){
+            out[jj] += B[ii*12 + jj] * control[ii];
+        }
+    }
+
+    return 0;
+}

@@ -441,6 +441,65 @@ flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircr
     return traj;
 }
 
+int no_controller(double time, const double * x, double * u, void * arg)
+{
+    (void)(time);
+    (void)(x);
+    (void)(arg);
+    u[0] = 0.0;
+    u[1] = 0.0;
+    u[2] = 0.0;
+    u[3] = 0.0;
+    
+    return 0;
+}
+
+struct Trajectory *
+flight_sim_lin(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircraft * ac,
+               double dt_save, size_t nsteps, real * AB)
+{
+    /* double dtmin = 1e-16; */
+    /* double dtmax = dt_save; */
+    /* double tol = 1e-14; */
+
+    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_linearized, AB, no_controller, ss);
+    integrator_set_type(ode, "rk4");
+    integrator_set_dt(ode, 1e-4);
+    /* integrator_set_type(ode,"rkf45");     */
+    /* integrator_set_adaptive_opts(ode, dtmin, dtmax, tol); */
+    integrator_set_verbose(ode, 0);
+    
+
+    double start_time = 0.0;
+    double control[4];
+    double ic[12];
+    ic[0] = xyz->v1;     // x
+    ic[1] = xyz->v2;     // y
+    ic[2] = xyz->v3;     // z
+    ic[3] = 0.0; //ss->UVW.v1;  // U
+    ic[4] = 0.0; //ss->UVW.v2;  // V
+    ic[5] = 0.0; //ss->UVW.v3;  // W
+    ic[6] = 0.0; //ss->PQR.v1;  // P
+    ic[7] = 0.0; //ss->PQR.v2;  // Q
+    ic[8] = 0.0; //ss->PQR.v3;  // R
+    ic[9] = 0.0; //ss->roll;    // roll
+    ic[10] = 0.0; //ss->pitch;  // pitch
+    ic[11] = yaw;        // yaw    
+    no_controller(0.0, ic, control, ss);
+
+    struct Trajectory * traj = NULL;        
+    int res = trajectory_add(&traj, 12, 4, start_time, ic, control);
+
+    double dt = dt_save;
+    for (size_t ii = 0; ii < nsteps; ii++){
+        res = trajectory_step(traj, ode, dt);
+    }
+    integrator_destroy(ode);
+    return traj;
+}
+
+
+
 int print_A_B(FILE * fp, real jac[192])
 {
 
@@ -568,9 +627,10 @@ int main(int argc, char* argv[]){
     trimmer(&trim_spec, &ss);
     steady_state_print(stdout, &ss);
 
+    real jac[144 + 48];   
     if (linearize > 0){
 
-        real jac[144 + 48];
+
         real ic[12];
         ic[0] = 0.0;
         ic[1] = 0.0;
@@ -625,6 +685,33 @@ int main(int argc, char* argv[]){
         trajectory_free(traj); traj = NULL;
         fclose(fp);
         printf("\n\n");
+
+
+        if (linearize){
+            fprintf(stdout, "========================================================\n");
+            fprintf(stdout, "     Simulating Linearized Dynamics at Steady State     \n");
+            fprintf(stdout, "========================================================\n");
+
+
+            sprintf(filename, "lrb_%s", sim_name);
+            printf("Saving simulationt to %s\n", filename);
+            FILE * fp = fopen(filename, "w");
+            
+            if (fp == NULL){
+                fprintf(stdout, "Cannot open file %s\n", filename);
+                return 1;                
+            }
+
+            traj = flight_sim_lin(&xyz, yaw, &ss, &aircraft, dt_save, nsteps, jac);
+            fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
+                    "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");
+            
+            trajectory_print(traj, fp, 10);            
+            trajectory_free(traj); traj = NULL;
+            
+            fclose(fp);
+        }
+        
     }
 
 

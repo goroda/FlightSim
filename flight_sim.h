@@ -188,7 +188,11 @@ int rigid_body_lin_forces_jac(double time,
                               const double * control,
                               double * out, double * jac,
                               void * arg);
-
+int rigid_body_linearized(double time, const double * state,
+                          const double * control,
+                          double * out, double * jac,
+                          void * arg);
+    
 int aero_angles(const struct Vec3* UVW, real Vac, struct AeroAngles * ab);
 int aero_angles_g (const struct Vec3* UVW, real Vac,
                    const struct StateGrad * vac_g,
