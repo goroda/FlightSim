@@ -393,6 +393,12 @@ int controller(double time, const double * x, double * u, void * arg)
     u[1] = ss->aero_con.v2; // aileron
     u[2] = ss->aero_con.v3; // rudder
     u[3] = ss->thrust;      // thrust
+
+    // step response    
+    /* if (time > 0){ */
+    /*     u[0] += -0.2 / 180 * M_PI; */
+    /*     /\* u[3] = 5.0; *\/ */
+    /* } */
     
     return 0;
 }
@@ -443,13 +449,19 @@ flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircr
 
 int no_controller(double time, const double * x, double * u, void * arg)
 {
-    (void)(time);
+ 
     (void)(x);
     (void)(arg);
+
     u[0] = 0.0;
     u[1] = 0.0;
     u[2] = 0.0;
     u[3] = 0.0;
+    // step response    
+    /* if (time > 0){ */
+    /*     u[0] = -0.2 / 180 * M_PI; */
+    /*     /\* u[3] = 5.0;  *\/ */
+    /* } */
     
     return 0;
 }
@@ -462,7 +474,7 @@ flight_sim_lin(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Airc
     /* double dtmax = dt_save; */
     /* double tol = 1e-14; */
 
-    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_linearized, AB, no_controller, ss);
+    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_linearized, AB, no_controller, NULL);
     integrator_set_type(ode, "rk4");
     integrator_set_dt(ode, 1e-4);
     /* integrator_set_type(ode,"rkf45");     */
@@ -478,7 +490,7 @@ flight_sim_lin(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Airc
     ic[2] = xyz->v3;     // z
     ic[3] = 0.0; //ss->UVW.v1;  // U
     ic[4] = 0.0; //ss->UVW.v2;  // V
-    ic[5] = 0.0; //ss->UVW.v3;  // W
+    ic[5] = 0.0; //ss->UVW.v3;  // W  
     ic[6] = 0.0; //ss->PQR.v1;  // P
     ic[7] = 0.0; //ss->PQR.v2;  // Q
     ic[8] = 0.0; //ss->PQR.v3;  // R
@@ -672,7 +684,7 @@ int main(int argc, char* argv[]){
 
         char filename[256];
         sprintf(filename, "nrb_%s",sim_name);
-        printf("Saving simulationt to %s\n", filename);
+        printf("Saving simulation to %s\n", filename);
         FILE * fp = fopen(filename, "w");
 
         if (fp == NULL){
@@ -694,7 +706,7 @@ int main(int argc, char* argv[]){
 
 
             sprintf(filename, "lrb_%s", sim_name);
-            printf("Saving simulationt to %s\n", filename);
+            printf("Saving simulation to %s\n", filename);
             FILE * fp = fopen(filename, "w");
             
             if (fp == NULL){
@@ -702,15 +714,23 @@ int main(int argc, char* argv[]){
                 return 1;                
             }
 
+            struct Vec3 xyz_ss = {0, 0, -5};
+            real yaw_ss = M_PI/4.0;
+            struct Trajectory * traj_ss = flight_sim_ss(&xyz_ss, yaw_ss, &ss, &aircraft, dt_save, nsteps);
+        
+            
             struct Vec3 xyz_perturbed = {0, 0, 0};
             real yaw_perturbed = 0.0;
-            traj = flight_sim_lin(&xyz_perturbed, yaw_perturbed, &ss, &aircraft,
+            struct Trajectory * traj_lin = flight_sim_lin(&xyz_perturbed, yaw_perturbed, &ss, &aircraft,
                                   dt_save, nsteps, jac);
             fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
                     "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");
             
-            trajectory_print(traj, fp, 10);            
-            trajectory_free(traj); traj = NULL;
+
+            trajectory_print(traj_lin, fp, 10);
+            trajectory_print(traj_ss, fp, 10);            
+            trajectory_free(traj_lin); traj_lin = NULL;
+            trajectory_free(traj_ss); traj_ss = NULL;
             
             fclose(fp);
         }

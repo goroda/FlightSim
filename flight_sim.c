@@ -1287,14 +1287,14 @@ int rigid_body_linearized(double time, const double * state,
     
     for (size_t ii = 0; ii < 12; ii++){
         for (size_t jj = 0; jj < 12; jj++){
-            out[jj] += AB[ii*12 + jj] * state[jj];
+            out[jj] += (AB[ii*12 + jj] * state[ii]);
         }
     }
 
     real * B = AB + 144;
     for (size_t ii = 0; ii < 4; ii++){
         for (size_t jj = 0; jj < 12; jj++){
-            out[jj] += B[ii*12 + jj] * control[ii];
+            out[jj] += (B[ii*12 + jj] * control[ii]);
         }
     }
 
