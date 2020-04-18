@@ -25,7 +25,7 @@ Here is sample output for steady flight at a speed of 120 ft/s with a 10 ft/s st
 
 
 ``` shell
-$ ./ac_trim -s 120 -c 10 -y 0 --linearize
+$ ./ac_trim vehicles/pioneer_uav.json -s 120 -c 10 -y 0 --linearize
 
 ========================================================
                         TRIM RESULT                     
