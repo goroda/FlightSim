@@ -718,6 +718,21 @@ int main(int argc, char* argv[]){
             fprintf(stdout, "========================================================\n");
 
 
+            sprintf(filename, "lABmat_%s", sim_name);
+            printf("Saving AB mat to %s\n", filename);
+            fp = fopen(filename, "w");
+
+            fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
+                    "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw", "Elevator", "Aileron", "Rudder", "Thrust");
+            for (size_t ii = 0; ii < 12; ii++){
+                for (size_t jj = 0; jj < 16; jj++){
+                    fprintf(fp, "%3.15f ", jac[jj*12 + ii]);
+                }
+                fprintf(fp, "\n");
+            }
+            fclose(fp);
+            
+            
             sprintf(filename, "lrb_%s", sim_name);
             printf("Saving simulation to %s\n", filename);
             FILE * fp = fopen(filename, "w");
