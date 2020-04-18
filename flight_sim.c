@@ -71,6 +71,89 @@ inline real aircraft_get_rt22(const struct Aircraft* ac){ return ac->rt22; };
 inline real aircraft_get_rt31(const struct Aircraft* ac){ return ac->rt31; };
 inline real aircraft_get_rt32(const struct Aircraft* ac){ return ac->rt32; };
 
+int aircraft_inertia(struct Aircraft * ac)
+{
+
+    ac->rtn1 = ac->Ixx * ac->Izz - (ac->Ixz * ac->Ixz);
+    ac->rtn2 = ac->Iyy;
+    ac->rtn3 = ac->rtn1;
+
+    ac->rt11 = (ac->Iyy * ac->Izz - ac->Izz*ac->Izz - ac->Ixz * ac->Ixz);
+    ac->rt12 = ac->Ixz * (ac->Ixx - ac->Iyy + ac->Izz);
+
+    ac->rt21 = ac->Izz - ac->Ixx;
+    ac->rt22 = ac->Ixz;
+
+    ac->rt31 = -ac->Ixx * ac->Iyy + ac->Ixx * ac->Ixx + ac->Ixz * ac->Ixz;
+    ac->rt32 = ac->Ixz * (-ac->Ixx + ac->Iyy - ac->Izz);
+
+    return 0;
+}
+
+int aircraft_init(struct Aircraft * ac)
+{
+
+    ac->m = 0.0;
+    
+    ac->span = 0.0;
+    ac->chord = 0.0;
+    ac->area = ac->span * ac->chord;
+    ac->mac = 0.0;
+    ac->AR = 0.0;
+    ac->e = 0.0;
+    ac->K = 0.0;
+    
+    ac->Ixx = 0.0;
+    ac->Ixz = 0.0;
+    ac->Iyy = 0.0;
+    ac->Izz = 0.0;
+
+    ac->cphit = 1;
+    ac->sphit = 0;
+
+    //0 aoa aoa_dot mach q elevator
+    ac->CL[0] = 0.0;
+    ac->CL[1] = 0.0;
+    ac->CL[2] = 0.0;
+    ac->CL[3] = 0.0;
+    ac->CL[4] = 0.0;
+    ac->CL[5] = 0.0;
+
+    //para aoa mach
+    ac->CD[0] = 0.0;
+    ac->CD[1] = 0.0;
+    ac->CD[2] = 0.0;
+    
+    //beta p rudder
+    ac->CE[0] = 0.0;
+    ac->CE[1] = 0.0;
+    ac->CE[2] = 0.0;
+    
+    // 0 aoa aoa_dot mach q elev
+    ac->Cm[0] = 0.0;
+    ac->Cm[1] = 0.0;
+    ac->Cm[2] = 0.0;
+    ac->Cm[3] = 0.0;
+    ac->Cm[4] = 0.0;
+    ac->Cm[5] = 0.0;
+    
+    // beta p r aileron rudder
+    ac->Cl[0] = 0.0;
+    ac->Cl[1] = 0.0;
+    ac->Cl[2] = 0.0;
+    ac->Cl[3] = 0.0;
+    ac->Cl[4] = 0.0;
+    
+    // beta p r aileron rudder
+    ac->Cn[0] = 0.0;
+    ac->Cn[1] = 0.0;
+    ac->Cn[2] = 0.0;
+    ac->Cn[3] = 0.0;
+    ac->Cn[4] = 0.0;
+
+    return aircraft_inertia(ac);
+}
+
 
 
 inline real vec3_norm(const struct Vec3 * v) {return sqrt(v->v1 * v->v1 + v->v2 * v->v2 + v->v3 * v->v3);};
@@ -380,24 +463,7 @@ int rkin_g(const struct EulerAngles * ea, const struct Vec3 * PQR, struct Vec3 *
 }
 
 
-int aircraft_inertia(struct Aircraft * ac)
-{
 
-    ac->rtn1 = ac->Ixx * ac->Izz - (ac->Ixz * ac->Ixz);
-    ac->rtn2 = ac->Iyy;
-    ac->rtn3 = ac->rtn1;
-
-    ac->rt11 = (ac->Iyy * ac->Izz - ac->Izz*ac->Izz - ac->Ixz * ac->Ixz);
-    ac->rt12 = ac->Ixz * (ac->Ixx - ac->Iyy + ac->Izz);
-
-    ac->rt21 = ac->Izz - ac->Ixx;
-    ac->rt22 = ac->Ixz;
-
-    ac->rt31 = -ac->Ixx * ac->Iyy + ac->Ixx * ac->Ixx + ac->Ixz * ac->Ixz;
-    ac->rt32 = ac->Ixz * (-ac->Ixx + ac->Iyy - ac->Izz);
-
-    return 0;
-}
 
 
 

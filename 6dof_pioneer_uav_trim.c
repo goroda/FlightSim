@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include <assert.h>
 #include <time.h>
@@ -26,6 +27,9 @@
 
 #include <cdyn/integrate.h>
 #include <cdyn/simulate.h>
+
+#define JSMN_HEADER
+#include "tpl/jsmn/jsmn.h"
 
 struct TrimSpec
 {
@@ -551,8 +555,14 @@ void print_code_usage (FILE *, int) __attribute__ ((noreturn));
 void print_code_usage (FILE * stream, int exit_code)
 {
 
-    fprintf(stream, "Usage: %s options \n", program_name);
+    fprintf(stream, "Usage: %s <filename> options \n\n", program_name);
     fprintf(stream,
+            " Required Arguments\n"
+            " ------------------\n"
+            " <filename> must be a json file with the vehicle details.\n"
+            " \n\n\n "
+            " Optional Arguments\n"
+            " ------------------\n"            
             " -h --help                Display this usage information.\n"
             " -s --speed      <val>    Desired speed (e.g., 120 --> flight at 120 ft/s, groundspeed), default 120.\n"
             " -c --climb-rate <val>    Desired climb rate (e.g., -5 --> climb at 5 ft/s), default 0.\n"
@@ -564,8 +574,8 @@ void print_code_usage (FILE * stream, int exit_code)
     exit (exit_code);
 }
 
-int main(int argc, char* argv[]){
 
+int main(int argc, char* argv[]){
 
     int next_option;
     const char * const short_options = "hs:c:y:t:";
@@ -581,7 +591,8 @@ int main(int argc, char* argv[]){
         { NULL         , 0, NULL, 0   }
     };
     
-
+    program_name = argv[0];
+    
     real speed = 120.0;
     real climb_rate = 0.0;
     real yaw_rate = 0.0;
@@ -611,10 +622,7 @@ int main(int argc, char* argv[]){
                 break;
             case 1:
                 sim_name = optarg;
-                break;                 
-            /* case 'v': */
-            /*     verbose = strtol(optarg,NULL,10); */
-            /*     break; */
+                break;
             case '?': // The user specified an invalid option
                 printf("invalid option %s\n\n",optarg);
                 print_code_usage (stderr, 1);
@@ -626,8 +634,17 @@ int main(int argc, char* argv[]){
 
     } while (next_option != -1);
 
+    if (argc -  optind != 1){ // one non-optional argument
+        fprintf(stderr, "Incorrect input arguments. Vehicle file is required \n");
+        fprintf(stderr, "\n\n\n");
+        print_code_usage (stderr, 0);
+    }
+
+    // Name of the vehicle file
+    char * filename = argv[optind];
     struct Aircraft aircraft;
-    pioneer_uav(&aircraft);
+    aircraft_load(&aircraft, filename);
+
     struct TrimSpec trim_spec;
     trim_spec.z_dot = -climb_rate;
     trim_spec.yaw_dot = yaw_rate; ///3.0 * 2.0 * M_PI / 500.0;

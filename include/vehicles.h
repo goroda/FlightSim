@@ -13,6 +13,7 @@
 
 #include "flight_sim.h"
 
+int aircraft_load(struct Aircraft * ac, char * filename);
 int pioneer_uav(struct Aircraft * ac);
 
 #endif

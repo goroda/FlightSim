@@ -124,7 +124,11 @@ struct SteadyState
     real target_climb_rate, achieved_climb_rate;
     real aoa;
     real sideslip;
+
+    real flight_path_angle;
+    real bank_angle;
 };
+
 real steady_state_get_U(const struct SteadyState * ss);
 real steady_state_get_V(const struct SteadyState * ss);
 real steady_state_get_W(const struct SteadyState * ss);
@@ -173,7 +177,8 @@ struct Aircraft
     
 };
 int aircraft_inertia(struct Aircraft * ac);
-
+int aircraft_init(struct Aircraft * ac);
+    
 int rigid_body_lin_forces(double time, const double * state,
                           const double * control,
                           double * out, double * jac,
@@ -184,7 +189,11 @@ int rigid_body_lin_forces_jac(double time,
                               const double * control,
                               double * out, double * jac,
                               void * arg);
-
+int rigid_body_linearized(double time, const double * state,
+                          const double * control,
+                          double * out, double * jac,
+                          void * arg);
+    
 int aero_angles(const struct Vec3* UVW, real Vac, struct AeroAngles * ab);
 int aero_angles_g (const struct Vec3* UVW, real Vac,
                    const struct StateGrad * vac_g,
