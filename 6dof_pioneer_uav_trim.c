@@ -28,9 +28,6 @@
 #include <cdyn/integrate.h>
 #include <cdyn/simulate.h>
 
-#define JSMN_HEADER
-#include "tpl/jsmn/jsmn.h"
-
 struct TrimSpec
 {
     real z_dot;
@@ -644,7 +641,7 @@ int main(int argc, char* argv[]){
     char * filename = argv[optind];
     struct Aircraft aircraft;
     aircraft_load(&aircraft, filename);
-
+    
     struct TrimSpec trim_spec;
     trim_spec.z_dot = -climb_rate;
     trim_spec.yaw_dot = yaw_rate; ///3.0 * 2.0 * M_PI / 500.0;
@@ -658,7 +655,6 @@ int main(int argc, char* argv[]){
 
     real jac[144 + 48];   
     if (linearize > 0){
-
 
         real ic[12];
         ic[0] = 0.0;
@@ -754,8 +750,6 @@ int main(int argc, char* argv[]){
         
     }
 
-
     return 0;
-    
 }
 

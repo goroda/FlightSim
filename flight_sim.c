@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <time.h>
 #include <getopt.h>
+#include <float.h>
 
 #include "flight_sim.h"
 
@@ -150,6 +151,25 @@ int aircraft_init(struct Aircraft * ac)
     ac->Cn[2] = 0.0;
     ac->Cn[3] = 0.0;
     ac->Cn[4] = 0.0;
+
+    // degrees
+    ac->aoa_bounds[0] = -20.0;
+    ac->aoa_bounds[1] = 20.0;
+
+    ac->sideslip_bounds[0] = -20.0;
+    ac->sideslip_bounds[1] = 20.0;
+    
+    ac->elevator_bounds[0] = -20;
+    ac->elevator_bounds[1] = 20.0;
+
+    ac->aileron_bounds[0] = -20.0;
+    ac->aileron_bounds[1] = 20.0;
+    
+    ac->rudder_bounds[0] = -20.0;
+    ac->rudder_bounds[1] = 20.0;
+    
+    ac->thrust_bounds[0] = 0.0;
+    ac->thrust_bounds[1] = DBL_MAX;
 
     return aircraft_inertia(ac);
 }

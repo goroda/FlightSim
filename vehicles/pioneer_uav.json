@@ -51,4 +51,5 @@
  "elevator_limits": [-20,20],
  "rudder_limits": [-20,20],
  "aileron_limits": [-20,20],
- "thrust_limits": [0,115]}
+ "thrust_limits": [0,115]
+}

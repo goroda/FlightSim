@@ -174,8 +174,17 @@ struct Aircraft
     real Cm[6];
     real Cl[5];
     real Cn[5];
+
+    // Bounds
+    real aoa_bounds[2];
+    real sideslip_bounds[2];
+    real elevator_bounds[2];
+    real aileron_bounds[2];
+    real rudder_bounds[2];
+    real thrust_bounds[2];
     
 };
+
 int aircraft_inertia(struct Aircraft * ac);
 int aircraft_init(struct Aircraft * ac);
     
@@ -229,21 +238,21 @@ int rdyn_g(const struct Vec3 * PQR,
            struct StateGrad sg[3],
            struct ControlGrad cg[3]);
 int aero_forces(const struct AeroAngles * aero,
-                        const struct Vec3 * PQR, const struct Vec3 * aero_con,
-                        const struct Aircraft * ac,
-                        real rho,
-                        real vac,
-                        struct Vec3 * DEL,
+                const struct Vec3 * PQR, const struct Vec3 * aero_con,
+                const struct Aircraft * ac,
+                real rho,
+                real vac,
+                struct Vec3 * DEL,
                 struct Vec3 * LMN);
 int aero_forces_g(const struct AeroAngles * aero,
-                          const struct Vec3 * PQR, const struct Vec3 * aero_con,
-                          const struct Aircraft * ac,
-                          real rho,
-                          real vac,
-                          struct StateGrad * vac_g,
-                          struct Vec3 * DEL,
-                          struct Vec3 * LMN,
-                          struct StateGrad sg[6], // gradient of D, E, L, L, M, N
+                  const struct Vec3 * PQR, const struct Vec3 * aero_con,
+                  const struct Aircraft * ac,
+                  real rho,
+                  real vac,
+                  struct StateGrad * vac_g,
+                  struct Vec3 * DEL,
+                  struct Vec3 * LMN,
+                  struct StateGrad sg[6], // gradient of D, E, L, L, M, N
                   struct ControlGrad cg[6]);
     
 #endif 
