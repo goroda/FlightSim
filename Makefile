@@ -1,20 +1,20 @@
 IDIR=include
 CC=gcc
-CFLAGS=-O2 -I$(IDIR)
+CFLAGS=-O2 -I$(IDIR) -Itpl
 
 ODIR=obj
 LDIR=./
 
 LIBS=-lm -lcdyn -lnlopt
 
-_DEPS = flight_sim.h vehicles.h
+_DEPS = trimming.h flight_sim.h vehicles.h
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
-_OBJ = flight_sim.o vehicles.o 
+_OBJ = trimming.o flight_sim.o vehicles.o 
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 
 
-$(ODIR)/%.o: %.c $(DEPS)
+$(ODIR)/%.o: src/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 ac_trim: $(OBJ) 6dof_pioneer_uav_trim.c

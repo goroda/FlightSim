@@ -50,6 +50,35 @@ inline real steady_state_get_aileron(const struct SteadyState * ss){return ss->a
 inline real steady_state_get_rudder(const struct SteadyState * ss){return ss->aero_con.v3;}
 inline real steady_state_get_thrust(const struct SteadyState * ss){return ss->thrust;}
 
+int steady_state_set_vec(const struct SteadyState * ss, real x, real y, real z, real yaw,
+                         real state[12],
+                         real control[4])
+{
+    state[0] = x;
+    state[1] = y;
+    state[2] = z;
+    state[3] = steady_state_get_U(ss);
+    state[4] = steady_state_get_V(ss);
+    state[5] = steady_state_get_W(ss);
+    state[6] = steady_state_get_P(ss);
+    state[7] = steady_state_get_Q(ss);
+    state[8] = steady_state_get_R(ss);
+    state[9] = steady_state_get_Roll(ss);
+    state[10] = steady_state_get_Pitch(ss);
+    state[11] = yaw;
+
+    if (control != NULL){
+        control[0] = steady_state_get_elevator(ss);
+        control[1] = steady_state_get_aileron(ss);
+        control[2] = steady_state_get_rudder(ss);
+        control[3] = steady_state_get_thrust(ss);
+    }
+
+    return 0;
+}
+
+/* int  */
+
 
 inline real aircraft_get_mass(const struct Aircraft* ac){ return ac->m; };
 

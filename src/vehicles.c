@@ -17,7 +17,7 @@
 #include "vehicles.h"
 
 /* #define JSMN_HEADER */
-#include "tpl/jsmn/jsmn.h"
+#include "jsmn/jsmn.h"
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
     if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&

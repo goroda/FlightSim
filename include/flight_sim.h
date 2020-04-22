@@ -141,6 +141,9 @@ real steady_state_get_elevator(const struct SteadyState * ss);
 real steady_state_get_aileron(const struct SteadyState * ss);
 real steady_state_get_rudder(const struct SteadyState * ss);
 real steady_state_get_thrust(const struct SteadyState * ss);
+int steady_state_set_vec(const struct SteadyState * ss, real x, real y, real z, real yaw,
+                         real state[12],
+                         real control[4]);
 
 struct Aircraft
 {
