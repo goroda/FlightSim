@@ -8,9 +8,12 @@
 
 */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <string.h>
+
 
 #include "trimming.h"
 
@@ -200,6 +203,177 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
 
     ss->bank_angle = acos(num / den);
     
+    return 0;
+}
+
+#include "jsmn/jsmn.h"
+
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+    if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+        strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+        return 0;
+    }
+    return -1;
+}
+
+
+int steady_state_load(char * filename, struct SteadyState * ss)
+{
+
+    FILE * fp = fopen(filename, "r");
+    if (fp == NULL){
+        fprintf(stderr, "Cannot open file %s\n", filename);
+    }
+
+    // Determine file size
+    fseek(fp, 0, SEEK_END);
+    size_t size = ftell(fp);
+
+    /* printf("size = %zu\n", size); */
+    char* input = malloc(size * sizeof(char));
+
+    rewind(fp);
+    fread(input, sizeof(char), size, fp);
+
+    jsmn_parser p;
+    jsmntok_t t[10000];
+    int r = jsmn_parse(&p, input, strlen(input), t, 10000);
+
+    if (r < 0) {
+        printf("Failed to parse JSON: %d\n", r);
+        return 1;
+    }
+
+    /* Assume the top-level element is an object */
+    if (r < 1 || t[0].type != JSMN_OBJECT) {
+        printf("Object expected\n");
+        return 1;
+    }
+
+    /* Loop over all keys of the root object */
+    for (size_t i = 1; i < r; i++) {
+        /* printf("i = %zu, r = %d \n", i, r); */
+           
+        if (jsoneq(input, &t[i], "U") == 0) {
+            ss->UVW.v1 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "V") == 0) {
+            ss->UVW.v2 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "W") == 0) {
+            ss->UVW.v3 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "P") == 0) {
+            ss->PQR.v1 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "Q") == 0) {
+            ss->PQR.v2 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "R") == 0) {
+            ss->PQR.v3 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "elevator") == 0) {
+            ss->aero_con.v1 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "aileron") == 0) {
+            ss->aero_con.v2 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "rudder") == 0) {
+            ss->aero_con.v3 = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "thrust") == 0) {
+            ss->thrust = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "roll") == 0) {
+            ss->roll = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "pitch") == 0) {
+            ss->pitch = atof(input + t[i + 1].start);
+            i++;
+        }  
+        /* else { */
+        /*     printf("Unused key: %.*s\n", t[i].end - t[i].start, */
+        /*            input + t[i].start); */
+        /* } */
+    }
+    
+    fclose(fp);
+    free(input); 
+
+    return 0;
+}
+
+int steady_state_load_jac(char * filename, real * jac)
+{
+
+    FILE * fp = fopen(filename, "r");
+    if (fp == NULL){
+        fprintf(stderr, "Cannot open file %s\n", filename);
+    }
+
+    // Determine file size
+    fseek(fp, 0, SEEK_END);
+    size_t size = ftell(fp);
+
+    /* printf("size = %zu\n", size); */
+    char* input = malloc(size * sizeof(char));
+
+    rewind(fp);
+    fread(input, sizeof(char), size, fp);
+
+    jsmn_parser p;
+    jsmntok_t t[10000];
+    int r = jsmn_parse(&p, input, strlen(input), t, 10000);
+
+    if (r < 0) {
+        printf("Failed to parse JSON: %d\n", r);
+        return 1;
+    }
+
+    /* Assume the top-level element is an object */
+    if (r < 1 || t[0].type != JSMN_OBJECT) {
+        printf("Object expected\n");
+        return 1;
+    }
+
+    /* Loop over all keys of the root object */
+    for (size_t i = 1; i < r; i++) {
+        /* printf("i = %zu, r = %d \n", i, r); */
+        
+        if (jsoneq(input, &t[i], "A") == 0) {
+            if (t[i+1].type != JSMN_ARRAY) {
+                continue;
+            }
+            for (size_t kk = 0; kk < 144; kk++){
+                jsmntok_t * aa = &t[i + kk + 2];
+                jac[kk] = atof(input + aa->start);
+            }
+            i += t[i + 1].size + 1;        
+        }
+        else if (jsoneq(input, &t[i], "A") == 0) {
+            if (t[i+1].type != JSMN_ARRAY) {
+                continue;
+            }
+            for (size_t kk = 144; kk < 144+48; kk++){
+                jsmntok_t * aa = &t[i + kk + 2];
+                jac[kk] = atof(input + aa->start);
+            }
+            i += t[i + 1].size + 1;        
+        }
+
+    }
+
     return 0;
 }
 

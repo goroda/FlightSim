@@ -16,7 +16,7 @@
 
 #include "vehicles.h"
 
-/* #define JSMN_HEADER */
+#define JSMN_HEADER
 #include "jsmn/jsmn.h"
 
 static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {

@@ -35,6 +35,7 @@ struct Trajectory * flight_sim_lin(struct Vec3 * xyz, real yaw, struct SteadySta
                                    struct Aircraft * ac, double dt_save, size_t nsteps, real * AB);
 
 int steady_state_print(FILE * fp, const struct SteadyState * ss);
+int steady_state_print_to_json(FILE * fp, const struct SteadyState * ss, const real * jac);
 int print_A_B(FILE * fp, real jac[192]);
     
 static char * program_name;
@@ -45,6 +46,8 @@ void print_code_usage (FILE * stream, int exit_code)
 
     fprintf(stream, "Usage: %s <filename> options \n\n", program_name);
     fprintf(stream,
+            "This script trims a six degree of freedom aircraft model to a target speed, climb-rate, and yaw-rate. The script can also return the linear system obtained around the trim condition. Results are printed to the screen by default. However, the trim condition can be written to a json file by specifying an output filename\n "
+            "\n\n\n\n\n\n"
             " Required Arguments\n"
             " ------------------\n"
             " <filename> must be a json file with the vehicle details.\n"
@@ -56,8 +59,9 @@ void print_code_usage (FILE * stream, int exit_code)
             " -c --climb-rate <val>    Desired climb rate (e.g., -5 --> climb at 5 ft/s), default 0.\n"
             " -y --yaw-rate   <val>    Desired turn rate (e.g., 3.14 --> turn 'right' at pi rad/s), default 0.\n"
             " -t --threshold  <val>    Threshold value for setting states to zero default 1e-10.\n"
+            " -o --output     <file>   Filename for json to output.\n"
             " --linearize              Return linear system\n"
-            " --simulate      <file>   Simulate the system and print to file\n"
+            /* " --simulate      <file>   Simulate the system and print to file\n" */
         );
     exit (exit_code);
 }
@@ -66,15 +70,16 @@ void print_code_usage (FILE * stream, int exit_code)
 int main(int argc, char* argv[]){
 
     int next_option;
-    const char * const short_options = "hs:c:y:t:";
+    const char * const short_options = "hs:c:y:o:t:";
     const struct option long_options[] = {
         { "help"       ,  0, NULL, 'h' },
         { "speed"      , 1, NULL, 's' },
         { "climb-rate" , 1, NULL, 'c' },
         { "yaw-rate"   , 1, NULL, 'y' },
         { "threshold"  , 1, NULL, 't' },
+        { "output"  , 1, NULL, 'o' },
         { "linearize"  , 0, NULL, 'l' },
-        { "simulate"   , 1, NULL, 1 },        
+        /* { "simulate"   , 1, NULL, 1 },         */
         /* { "verbose"    , 1, NULL, 'v' }, */
         { NULL         , 0, NULL, 0   }
     };
@@ -86,7 +91,8 @@ int main(int argc, char* argv[]){
     real yaw_rate = 0.0;
     real thresh = 1e-10; // threshold for zero
     int linearize = 0;
-    char * sim_name = NULL;
+    /* char * sim_name = NULL; */
+    char * output_name = NULL;
     do {
         next_option = getopt_long (argc, argv, short_options, long_options, NULL);
         switch (next_option)
@@ -108,9 +114,12 @@ int main(int argc, char* argv[]){
             case 'l':
                 linearize = 1;
                 break;
-            case 1:
-                sim_name = optarg;
-                break;
+            case 'o':
+                output_name = optarg;
+                break;                
+            /* case 1: */
+            /*     sim_name = optarg; */
+            /*     break; */
             case '?': // The user specified an invalid option
                 printf("invalid option %s\n\n",optarg);
                 print_code_usage (stderr, 1);
@@ -122,7 +131,7 @@ int main(int argc, char* argv[]){
 
     } while (next_option != -1);
 
-    if (argc -  optind != 1){ // one non-optional argument
+    if (argc - optind != 1){ // one non-optional argument
         fprintf(stderr, "Incorrect input arguments. Vehicle file is required \n");
         fprintf(stderr, "\n\n\n");
         print_code_usage (stderr, 0);
@@ -159,86 +168,115 @@ int main(int argc, char* argv[]){
         
     }
 
-    if (sim_name != NULL){
-
-        fprintf(stdout, "========================================================\n");
-        fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n");
-        fprintf(stdout, "========================================================\n");
-        struct Vec3 xyz = {0, 0, -5};
-        real yaw = M_PI / 4.0;
-        double dt_save = 1e-1;
-        size_t nsteps = 1000;
-        struct Trajectory * traj = flight_sim_ss(&xyz, yaw, &ss, &aircraft, dt_save, nsteps);
-
-        char filename[256];
-        sprintf(filename, "nrb_%s",sim_name);
-        printf("Saving simulation to %s\n", filename);
-        FILE * fp = fopen(filename, "w");
-
+    if (output_name != NULL){
+        /* char filename[256]; */
+        /* sprintf(filename, "nrb_%s",sim_name); */
+        printf("Saving to %s\n", output_name);
+        FILE * fp = fopen(output_name, "w");
         if (fp == NULL){
             fprintf(stdout, "Cannot open file %s\n", filename);
             return 1;
         }
-        fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
-                "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");        
-        trajectory_print(traj, fp, 10);
-        trajectory_free(traj); traj = NULL;
-        fclose(fp);
-        printf("\n\n");
 
-
-        if (linearize){
-            fprintf(stdout, "========================================================\n");
-            fprintf(stdout, "     Simulating Linearized Dynamics at Steady State     \n");
-            fprintf(stdout, "========================================================\n");
-
-
-            sprintf(filename, "lABmat_%s", sim_name);
-            printf("Saving AB mat to %s\n", filename);
-            fp = fopen(filename, "w");
-
-            fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
-                    "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw", "Elevator", "Aileron", "Rudder", "Thrust");
-            for (size_t ii = 0; ii < 12; ii++){
-                for (size_t jj = 0; jj < 16; jj++){
-                    fprintf(fp, "%3.15f ", jac[jj*12 + ii]);
-                }
-                fprintf(fp, "\n");
-            }
-            fclose(fp);
-            
-            
-            sprintf(filename, "lrb_%s", sim_name);
-            printf("Saving simulation to %s\n", filename);
-            FILE * fp = fopen(filename, "w");
-            
-            if (fp == NULL){
-                fprintf(stdout, "Cannot open file %s\n", filename);
-                return 1;                
-            }
-
-            struct Vec3 xyz_ss = {0, 0, -5};
-            real yaw_ss = M_PI/4.0;
-            struct Trajectory * traj_ss = flight_sim_ss(&xyz_ss, yaw_ss, &ss, &aircraft, dt_save, nsteps);
-        
-            
-            struct Vec3 xyz_perturbed = {0, 0, 0};
-            real yaw_perturbed = 0.0;
-            struct Trajectory * traj_lin = flight_sim_lin(&xyz_perturbed, yaw_perturbed, &ss, &aircraft,
-                                  dt_save, nsteps, jac);
-            fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
-                    "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");
-            
-
-            trajectory_print(traj_lin, fp, 10);
-            trajectory_print(traj_ss, fp, 10);            
-            trajectory_free(traj_lin); traj_lin = NULL;
-            trajectory_free(traj_ss); traj_ss = NULL;
-            
-            fclose(fp);
+        if (linearize == 0){
+            steady_state_print_to_json(fp, &ss, NULL);
         }
+        else{
+            steady_state_print_to_json(fp, &ss, jac);
+        }
+
+        fclose(fp);
+        
+        struct SteadyState ss_check;
+        steady_state_load(output_name, &ss_check);        
+        steady_state_print(stdout, &ss_check);
+
+        real jac_check[144 + 48];
+        steady_state_load_jac(output_name, jac_check);
+        print_A_B(stdout, jac);
         
     }
+
+    /* if (sim_name != NULL){ */
+
+    /*     fprintf(stdout, "========================================================\n"); */
+    /*     fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n"); */
+    /*     fprintf(stdout, "========================================================\n"); */
+    /*     struct Vec3 xyz = {0, 0, -5}; */
+    /*     real yaw = M_PI / 4.0; */
+    /*     double dt_save = 1e-1; */
+    /*     size_t nsteps = 1000; */
+    /*     struct Trajectory * traj = flight_sim_ss(&xyz, yaw, &ss, &aircraft, dt_save, nsteps); */
+
+    /*     char filename[256]; */
+    /*     sprintf(filename, "nrb_%s",sim_name); */
+    /*     printf("Saving simulation to %s\n", filename); */
+    /*     FILE * fp = fopen(filename, "w"); */
+
+    /*     if (fp == NULL){ */
+    /*         fprintf(stdout, "Cannot open file %s\n", filename); */
+    /*         return 1; */
+    /*     } */
+    /*     fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", */
+    /*             "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");         */
+    /*     trajectory_print(traj, fp, 10); */
+    /*     trajectory_free(traj); traj = NULL; */
+    /*     fclose(fp); */
+    /*     printf("\n\n"); */
+
+
+    /*     if (linearize){ */
+    /*         fprintf(stdout, "========================================================\n"); */
+    /*         fprintf(stdout, "     Simulating Linearized Dynamics at Steady State     \n"); */
+    /*         fprintf(stdout, "========================================================\n"); */
+
+
+    /*         sprintf(filename, "lABmat_%s", sim_name); */
+    /*         printf("Saving AB mat to %s\n", filename); */
+    /*         fp = fopen(filename, "w"); */
+
+    /*         fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", */
+    /*                 "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw", "Elevator", "Aileron", "Rudder", "Thrust"); */
+    /*         for (size_t ii = 0; ii < 12; ii++){ */
+    /*             for (size_t jj = 0; jj < 16; jj++){ */
+    /*                 fprintf(fp, "%3.15f ", jac[jj*12 + ii]); */
+    /*             } */
+    /*             fprintf(fp, "\n"); */
+    /*         } */
+    /*         fclose(fp); */
+            
+            
+    /*         sprintf(filename, "lrb_%s", sim_name); */
+    /*         printf("Saving simulation to %s\n", filename); */
+    /*         FILE * fp = fopen(filename, "w"); */
+            
+    /*         if (fp == NULL){ */
+    /*             fprintf(stdout, "Cannot open file %s\n", filename); */
+    /*             return 1;                 */
+    /*         } */
+
+    /*         struct Vec3 xyz_ss = {0, 0, -5}; */
+    /*         real yaw_ss = M_PI/4.0; */
+    /*         struct Trajectory * traj_ss = flight_sim_ss(&xyz_ss, yaw_ss, &ss, &aircraft, dt_save, nsteps); */
+        
+            
+    /*         struct Vec3 xyz_perturbed = {0, 0, 0}; */
+    /*         real yaw_perturbed = 0.0; */
+    /*         struct Trajectory * traj_lin = flight_sim_lin(&xyz_perturbed, yaw_perturbed, &ss, &aircraft, */
+    /*                               dt_save, nsteps, jac); */
+    /*         fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", */
+    /*                 "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw"); */
+            
+
+    /*         trajectory_print(traj_lin, fp, 10); */
+    /*         trajectory_print(traj_ss, fp, 10);             */
+    /*         trajectory_free(traj_lin); traj_lin = NULL; */
+    /*         trajectory_free(traj_ss); traj_ss = NULL; */
+            
+    /*         fclose(fp); */
+    /*     } */
+        
+    /* } */
 
     return 0;
 }
@@ -388,6 +426,63 @@ int print_A_B(FILE * fp, real jac[192])
     return 0;
 }
 
+
+int steady_state_print_to_json(FILE * fp, const struct SteadyState * ss, const real * jac)
+{
+    // Should add accessors for all elements
+    fprintf(fp, "{\n");
+    
+    fprintf(fp, "\"U\":%3.15f,\n", ss->UVW.v1);
+    fprintf(fp, "\"V\":%3.15f,\n", ss->UVW.v2);
+    fprintf(fp, "\"W\":%3.15f,\n", ss->UVW.v3);
+
+    fprintf(fp, "\"P\":%3.15f,\n", ss->PQR.v1);
+    fprintf(fp, "\"Q\":%3.15f,\n", ss->PQR.v2);    
+    fprintf(fp, "\"R\":%3.15f,\n", ss->PQR.v3);
+
+    fprintf(fp, "\"roll\":%3.15f,\n", ss->roll);
+    fprintf(fp, "\"pitch\":%3.15f,\n", ss->pitch);
+
+    fprintf(fp, "\"elevator\":%3.15f,\n", steady_state_get_elevator(ss));
+    fprintf(fp, "\"aileron\":%3.15f,\n",  steady_state_get_aileron(ss));
+    fprintf(fp, "\"rudder\":%3.15f,\n",   steady_state_get_rudder(ss));
+    fprintf(fp, "\"thrust\":%3.15f,\n",   steady_state_get_thrust(ss));
+    
+    
+    fprintf(fp, "\"Target_Speed\":%3.15f,\n",        ss->target_speed);
+    fprintf(fp, "\"Achieved_Speed\":%3.15f,\n",      ss->achieved_speed);
+    fprintf(fp, "\"Target_Climb_Rate\":%3.15f,\n",   ss->target_climb_rate);
+    fprintf(fp, "\"Achieved_Climb_Rate\":%3.15f,\n", ss->achieved_climb_rate);    
+    fprintf(fp, "\"Target_Yaw_Rate\":%3.15f,\n",     ss->target_yaw_rate);
+    fprintf(fp, "\"Achieved_Climb_Rate\":%3.15f,\n", ss->achieved_yaw_rate);
+
+
+    fprintf(fp, "\"Angle_of_Attack\":%3.15f,\n",     ss->aoa);
+    fprintf(fp, "\"Sideslip_Angle\":%3.15f,\n",      ss->sideslip);
+    fprintf(fp, "\"flight_path_angle\":%3.15f,\n",   ss->flight_path_angle);
+    fprintf(fp, "\"bank_angle\":%3.15f,\n",          ss->bank_angle);
+
+    if (jac != NULL){
+        fprintf(fp, "\"A:\"[");
+        for (size_t ii = 0; ii < 143; ii++){ // A matrix column order followed by B matrix column order
+            fprintf(fp, "%3.15f", jac[ii]);
+            fprintf(fp, ",");
+        }
+        fprintf(fp, "%3.15f", jac[143]);
+        fprintf(fp, "],\n");
+
+        fprintf(fp, "\"B\":[");
+        for (size_t ii = 144; ii < 144 + 47; ii++){
+            fprintf(fp, "%3.15f", jac[ii]);
+            fprintf(fp, ",");
+        }
+        fprintf(fp, "%3.15f", jac[144+47]);        
+        fprintf(fp, "]\n");
+    }
+    fprintf(fp, "}\n");
+
+    return 0;
+}
 
 int steady_state_print(FILE * fp, const struct SteadyState * ss)
 {

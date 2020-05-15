@@ -17,8 +17,8 @@ OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 $(ODIR)/%.o: src/%.c $(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
-ac_trim: $(OBJ) 6dof_pioneer_uav_trim.c
-	$(CC) -o ac_trim 6dof_pioneer_uav_trim.c $(OBJ) $(CFLAGS) $(LIBS)
+ac_trim: $(OBJ) ac_trim.c
+	$(CC) -o ac_trim ac_trim.c $(OBJ) $(CFLAGS) $(LIBS)
 
 check_grad: $(OBJ) check_gradient_rigid_body.c
 	$(CC) -o check_grad check_gradient_rigid_body.c $(OBJ) $(CFLAGS) $(LIBS)

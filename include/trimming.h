@@ -25,5 +25,7 @@ struct TrimSpec
 };
 
 int trimmer(struct TrimSpec * data, struct SteadyState * ss);
+int steady_state_load(char * filename, struct SteadyState * ss);
+int steady_state_load_jac(char * filename, real * jac);
 
 #endif
