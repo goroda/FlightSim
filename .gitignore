@@ -6,3 +6,5 @@
 check_grad
 *.o
 *.dat
+test.json
+example_ic.json.run

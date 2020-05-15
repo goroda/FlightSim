@@ -29,10 +29,9 @@
 #include <cdyn/simulate.h>
 
 
-struct Trajectory * flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss,
-                                  struct Aircraft * ac, double dt_save, size_t nsteps);
-/* struct Trajectory * flight_sim_lin(struct Vec3 * xyz, real yaw, struct SteadyState * ss, */
-/*                                    struct Aircraft * ac, double dt_save, size_t nsteps, real * AB); */
+int load_ic(char * filename, real * ic, real * ic_control);
+struct Trajectory * flight_sim(real * ic, real * control_fixed, struct Aircraft * ac,
+                               double dt_save, size_t nsteps);
 
 
 static char * program_name;
@@ -97,109 +96,42 @@ int main(int argc, char* argv[]){
     }
 
     // Name of the vehicle file
-    char * filename = argv[optind];
+    char * ac_filename = argv[optind];
     struct Aircraft aircraft;
-    aircraft_load(&aircraft, filename);
+    aircraft_load(&aircraft, ac_filename);
     
 
     fprintf(stdout, "========================================================\n");
     fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n");
     fprintf(stdout, "========================================================\n");
-    /* struct Vec3 xyz = {0, 0, -5}; */
-    /* real yaw = M_PI / 4.0; */
-    /* double dt_save = 1e-1; */
-    /* size_t nsteps = 1000; */
-    /* struct Trajectory * traj = flight_sim_ss(&xyz, yaw, &ss, &aircraft, dt_save, nsteps); */
 
-    /* char filename[256]; */
-    /* sprintf(filename, "nrb_%s",sim_name); */
-    /* printf("Saving simulation to %s\n", filename); */
-    /* FILE * fp = fopen(filename, "w"); */
+    real dt_save = 1e-2;
+    real nsteps = 1000;
+    real ic[12];
+    real control_fixed[4];
+    char * ic_filename = argv[optind+1];
+    load_ic(ic_filename, ic, control_fixed);
+    struct Trajectory * traj = flight_sim(ic, control_fixed, &aircraft, dt_save, nsteps);
 
-    /* if (fp == NULL){ */
-    /*     fprintf(stdout, "Cannot open file %s\n", filename); */
-    /*     return 1; */
-    /* } */
-    /* fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", */
-    /*         "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw"); */
-    /* trajectory_print(traj, fp, 10); */
-    /* trajectory_free(traj); traj = NULL; */
-    /* fclose(fp); */
-    /* printf("\n\n"); */
+    char filename[256];
+    sprintf(filename, "%s.run", ic_filename);
+    printf("Saving simulation to %s\n", filename);
+    FILE * fp = fopen(filename, "w");
 
+    if (fp == NULL){
+        fprintf(stdout, "Cannot open file %s\n", filename);
+        return 1;
+    }
+    fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
+            "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");
+    trajectory_print(traj, fp, 10);
 
-    /*     if (linearize){ */
-    /*         fprintf(stdout, "========================================================\n"); */
-    /*         fprintf(stdout, "     Simulating Linearized Dynamics at Steady State     \n"); */
-    /*         fprintf(stdout, "========================================================\n"); */
+    trajectory_free(traj); traj = NULL;
+    fclose(fp);
+    printf("\n\n");
 
 
-    /*         sprintf(filename, "lABmat_%s", sim_name); */
-    /*         printf("Saving AB mat to %s\n", filename); */
-    /*         fp = fopen(filename, "w"); */
 
-    /*         fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", */
-    /*                 "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw", "Elevator", "Aileron", "Rudder", "Thrust"); */
-    /*         for (size_t ii = 0; ii < 12; ii++){ */
-    /*             for (size_t jj = 0; jj < 16; jj++){ */
-    /*                 fprintf(fp, "%3.15f ", jac[jj*12 + ii]); */
-    /*             } */
-    /*             fprintf(fp, "\n"); */
-    /*         } */
-    /*         fclose(fp); */
-            
-            
-    /*         sprintf(filename, "lrb_%s", sim_name); */
-    /*         printf("Saving simulation to %s\n", filename); */
-    /*         FILE * fp = fopen(filename, "w"); */
-            
-    /*         if (fp == NULL){ */
-    /*             fprintf(stdout, "Cannot open file %s\n", filename); */
-    /*             return 1; */
-    /*         } */
-
-    /*         struct Vec3 xyz_ss = {0, 0, -5}; */
-    /*         real yaw_ss = M_PI/4.0; */
-    /*         struct Trajectory * traj_ss = flight_sim_ss(&xyz_ss, yaw_ss, &ss, &aircraft, dt_save, nsteps); */
-        
-            
-    /*         struct Vec3 xyz_perturbed = {0, 0, 0}; */
-    /*         real yaw_perturbed = 0.0; */
-    /*         struct Trajectory * traj_lin = flight_sim_lin(&xyz_perturbed, yaw_perturbed, &ss, &aircraft, */
-    /*                               dt_save, nsteps, jac); */
-    /*         fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n", */
-    /*                 "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw"); */
-            
-
-    /*         trajectory_print(traj_lin, fp, 10); */
-    /*         trajectory_print(traj_ss, fp, 10); */
-    /*         trajectory_free(traj_lin); traj_lin = NULL; */
-    /*         trajectory_free(traj_ss); traj_ss = NULL; */
-            
-    /*         fclose(fp); */
-    /*     } */
-        
-    /* } */
-
-    return 0;
-}
-
-int no_controller(double time, const double * x, double * u, void * arg)
-{
- 
-    (void)(x);
-    (void)(arg);
-
-    u[0] = 0.0;
-    u[1] = 0.0;
-    u[2] = 0.0;
-    u[3] = 0.0;
-    // step response    
-    /* if (time > 0){ */
-    /*     u[0] = -0.2 / 180 * M_PI; */
-    /*     /\* u[3] = 5.0;  *\/ */
-    /* } */
-    
     return 0;
 }
 
@@ -208,12 +140,12 @@ int controller(double time, const double * x, double * u, void * arg)
     (void)(time);
     (void)(x);
 
-    struct SteadyState * ss = arg;
+    real * u_fixed = arg;
 
-    u[0] = ss->aero_con.v1; // elevator
-    u[1] = ss->aero_con.v2; // aileron
-    u[2] = ss->aero_con.v3; // rudder
-    u[3] = ss->thrust;      // thrust
+    u[0] = u_fixed[0]; // elevator
+    u[1] = u_fixed[1]; // aileron
+    u[2] = u_fixed[2]; // rudder
+    u[3] = u_fixed[3]; // thrust
 
     // step response    
     /* if (time > 0){ */
@@ -224,15 +156,15 @@ int controller(double time, const double * x, double * u, void * arg)
     return 0;
 }
 
-struct Trajectory *
-flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircraft * ac,
-              double dt_save, size_t nsteps)
+struct Trajectory * flight_sim(real * ic, real * control_use, struct Aircraft * ac,
+                               double dt_save, size_t nsteps)
 {
     /* double dtmin = 1e-16; */
     /* double dtmax = dt_save; */
     /* double tol = 1e-14; */
 
-    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_lin_forces, ac, controller, ss);
+    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_lin_forces, ac, controller,
+                                                           control_use);
     integrator_set_type(ode, "rk4");
     integrator_set_dt(ode, 1e-4);
     /* integrator_set_type(ode,"rkf45");     */
@@ -241,10 +173,8 @@ flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircr
     
 
     double start_time = 0.0;
-    double ic[12];    
-    double control[4];
-    steady_state_set_vec(ss, xyz->v1, xyz->v2, xyz->v3, yaw, ic, control);
-    controller(0.0, ic, control, ss);
+    real control[4];
+    controller(0.0, ic, control, control_use);
 
     struct Trajectory * traj = NULL;        
     int res = trajectory_add(&traj, 12, 4, start_time, ic, control);
@@ -257,39 +187,125 @@ flight_sim_ss(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircr
     return traj;
 }
 
+#define JSMN_HEADER
+#include "jsmn/jsmn.h"
+
+static int jsoneq(const char *json, jsmntok_t *tok, const char *s) {
+    if (tok->type == JSMN_STRING && (int)strlen(s) == tok->end - tok->start &&
+        strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+        return 0;
+    }
+    return -1;
+}
 
 
+int load_ic(char * filename, real * ic, real * ic_control)
+{
+
+    FILE * fp = fopen(filename, "r");
+    if (fp == NULL){
+        fprintf(stderr, "Cannot open file %s\n", filename);
+    }
+    
+    // Determine file size
+    fseek(fp, 0, SEEK_END);
+    size_t size = ftell(fp);
+
+    /* printf("size = %zu\n", size); */
+    char* input = malloc(size * sizeof(char));
+
+    rewind(fp);
+    fread(input, sizeof(char), size, fp);
+
+    jsmn_parser p;
+    jsmntok_t t[10000];
+    int r = jsmn_parse(&p, input, strlen(input), t, 10000);
+
+    if (r < 0) {
+        printf("Failed to parse JSON: %d\n", r);
+        return 1;
+    }
+
+    /* Assume the top-level element is an object */
+    if (r < 1 || t[0].type != JSMN_OBJECT) {
+        printf("Object expected\n");
+        return 1;
+    }
+
+    /* Loop over all keys of the root object */
+    for (size_t i = 1; i < r; i++) {
+        /* printf("i = %zu, r = %d \n", i, r); */
+           
+        if (jsoneq(input, &t[i], "x") == 0) {
+            ic[0] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "y") == 0) {
+            ic[1] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "z") == 0) {
+            ic[2] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "U") == 0) {
+            ic[3] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "V") == 0) {
+            ic[4] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "W") == 0) {
+            ic[5] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "P") == 0) {
+            ic[6] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "Q") == 0) {
+            ic[7] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "R") == 0) {
+            ic[8] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "roll") == 0) {
+            ic[9] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "pitch") == 0) {
+            ic[10] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "yaw") == 0) {
+            ic[11] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "elevator") == 0) {
+            ic_control[0] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "aileron") == 0) {
+            ic_control[1] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "rudder") == 0) {
+            ic_control[2] = atof(input + t[i + 1].start);
+            i++;
+        }
+        else if (jsoneq(input, &t[i], "thrust") == 0) {
+            ic_control[3] = atof(input + t[i + 1].start);
+            i++;
+        }        
+    }
+    
+    fclose(fp);
+    free(input); 
+
+    return 0;
+}
 
     
-/* struct Trajectory * */
-/* flight_sim_lin(struct Vec3 * xyz, real yaw, struct SteadyState * ss, struct Aircraft * ac, */
-/*                double dt_save, size_t nsteps, real * AB) */
-/* { */
-/*     /\* double dtmin = 1e-16; *\/ */
-/*     /\* double dtmax = dt_save; *\/ */
-/*     /\* double tol = 1e-14; *\/ */
-
-/*     struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_linearized, AB, no_controller, NULL); */
-/*     integrator_set_type(ode, "rk4"); */
-/*     integrator_set_dt(ode, 1e-4); */
-/*     /\* integrator_set_type(ode,"rkf45");     *\/ */
-/*     /\* integrator_set_adaptive_opts(ode, dtmin, dtmax, tol); *\/ */
-/*     integrator_set_verbose(ode, 0); */
-    
-
-/*     double start_time = 0.0; */
-/*     double ic[12];     */
-/*     double control[4]; */
-/*     steady_state_set_vec(ss, xyz->v1, xyz->v2, xyz->v3, yaw, ic, control);     */
-/*     no_controller(0.0, ic, control, ss); */
-
-/*     struct Trajectory * traj = NULL;         */
-/*     int res = trajectory_add(&traj, 12, 4, start_time, ic, control); */
-
-/*     double dt = dt_save; */
-/*     for (size_t ii = 0; ii < nsteps; ii++){ */
-/*         res = trajectory_step(traj, ode, dt); */
-/*     } */
-/*     integrator_destroy(ode); */
-/*     return traj; */
-/* } */
