@@ -48,10 +48,6 @@ void print_code_usage (FILE * stream, int exit_code)
             "./ac_sim pioneer_uav.json ic.json\n"
             
             "\n\n\n\n\n\n"
-            " Required Arguments\n"
-            " ------------------\n"
-            " <filename> must be a json file with the vehicle details.\n"
-            " \n\n\n "
             " Optional Arguments\n"
             " ------------------\n"
             " -h --help                Display this usage information.\n"
@@ -102,7 +98,9 @@ int main(int argc, char* argv[]){
 
     } while (next_option != -1);
 
+
     if (argc - optind != 2){ //two non-optional argument
+        fprintf(stderr, "%d\n", argc-optind);
         fprintf(stderr, "Incorrect input arguments. Vehicle and initial condition files are required \n");
         fprintf(stderr, "\n\n\n");
         print_code_usage (stderr, 0);
@@ -110,19 +108,27 @@ int main(int argc, char* argv[]){
 
     // Name of the vehicle file
     char * ac_filename = argv[optind];
+    char * ic_filename = argv[optind+1];
+
+    printf("Aircraft filename = %s\n", ac_filename);
+    printf("Initial condition filename = %s\n", ic_filename);    
+
+    
     struct Aircraft aircraft;
     aircraft_load(&aircraft, ac_filename);
     
-
     fprintf(stdout, "========================================================\n");
     fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n");
     fprintf(stdout, "========================================================\n");
 
 
     size_t nsteps = (size_t) floor(T / dt_save);
+    printf("Time = %3.4E\n", T);
+    printf("save_time = %3.4E\n", dt_save);
+    printf("nsteps = %zu\n", nsteps );
     real ic[12];
     real control_fixed[4];
-    char * ic_filename = argv[optind+1];
+
     load_ic(ic_filename, ic, control_fixed);
     struct Trajectory * traj = flight_sim(ic, control_fixed, &aircraft, dt_save, nsteps);
 
