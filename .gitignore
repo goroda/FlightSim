@@ -2,6 +2,7 @@
 *.out
 *.sh
 *ac_trim
+*ac_sim
 check_grad
 *.o
 *.dat

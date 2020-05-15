@@ -20,6 +20,9 @@ $(ODIR)/%.o: src/%.c $(DEPS)
 ac_trim: $(OBJ) ac_trim.c
 	$(CC) -o ac_trim ac_trim.c $(OBJ) $(CFLAGS) $(LIBS)
 
+ac_sim: $(OBJ) ac_sim.c
+	$(CC) -o ac_sim ac_sim.c $(OBJ) $(CFLAGS) $(LIBS)
+
 check_grad: $(OBJ) check_gradient_rigid_body.c
 	$(CC) -o check_grad check_gradient_rigid_body.c $(OBJ) $(CFLAGS) $(LIBS)
 
