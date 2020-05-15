@@ -40,7 +40,7 @@ void print_code_usage (FILE *, int) __attribute__ ((noreturn));
 void print_code_usage (FILE * stream, int exit_code)
 {
 
-    fprintf(stream, "Usage: %s <vehicle_filename> <initial_condition_filename> \n\n", program_name);
+    fprintf(stream, "Usage: %s <vehicle_filename> <initial_condition_filename> options \n\n", program_name);
     fprintf(stream,
             "Simulate a 6DOF aircraft\n "
 
@@ -53,8 +53,10 @@ void print_code_usage (FILE * stream, int exit_code)
             " <filename> must be a json file with the vehicle details.\n"
             " \n\n\n "
             " Optional Arguments\n"
-            " ------------------\n"            
+            " ------------------\n"
             " -h --help                Display this usage information.\n"
+            " -t --time                Length of integration period (in seconds) (default 10)\n"
+            " -d --dtsave              Size of timestep to save (default 1e-2)\n"
             /* " --simulate      <file>   Simulate the system and print to file\n" */
         );
     exit (exit_code);
@@ -64,20 +66,31 @@ void print_code_usage (FILE * stream, int exit_code)
 int main(int argc, char* argv[]){
 
     int next_option;
-    const char * const short_options = "h:";
+    const char * const short_options = "ht:d:";
     const struct option long_options[] = {
         { "help"       ,  0, NULL, 'h' },
+        { "time"       ,  1, NULL, 't' },
+        { "dtsave"     ,  1, NULL, 'd' },        
         { NULL         , 0, NULL, 0   }
     };
     
     program_name = argv[0];
-    
+
+    real dt_save = 1e-2;
+    real T = 10.0;
+
     do {
         next_option = getopt_long (argc, argv, short_options, long_options, NULL);
         switch (next_option)
         {
             case 'h': 
                 print_code_usage(stdout, 0);
+            case 'd':
+                dt_save = atof(optarg);
+                break;
+            case 't':
+                T = atof(optarg);
+                break;                                
             case '?': // The user specified an invalid option
                 printf("invalid option %s\n\n",optarg);
                 print_code_usage (stderr, 1);
@@ -105,8 +118,8 @@ int main(int argc, char* argv[]){
     fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n");
     fprintf(stdout, "========================================================\n");
 
-    real dt_save = 1e-2;
-    real nsteps = 1000;
+
+    size_t nsteps = (size_t) floor(T / dt_save);
     real ic[12];
     real control_fixed[4];
     char * ic_filename = argv[optind+1];
