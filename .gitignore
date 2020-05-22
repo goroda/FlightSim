@@ -3,6 +3,7 @@
 *.sh
 *ac_trim
 *ac_sim
+*ac_sim_lin
 check_grad
 *.o
 *.dat

@@ -97,8 +97,13 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     lb[1] = 0.0;  // lower bound V
     ub[1] = 0.0;  // upper bound V
 
+    lb[6] = -M_PI/2.0; // lower bound roll
+    ub[6] = M_PI/2.0; // upper bound roll
+    
     x[1] = 0.0; // initial condition V
     x[11] = 10; // initial condition thrust
+
+    
     
     // run without bounds
     /* opt = nlopt_create(NLOPT_LN_NELDERMEAD, 12); */
@@ -108,7 +113,7 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_upper_bounds(opt, ub);
     nlopt_set_min_objective(opt, trim_objective, data);
-    nlopt_set_stopval(opt, 1e-12);
+    /* nlopt_set_stopval(opt, 1e-12); */
     
     res = nlopt_optimize(opt, x, &val);
     nlopt_destroy(opt);
@@ -125,8 +130,8 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     /* opt = nlopt_create(NLOPT_LD_LBFGS, 12); */
     nlopt_set_ftol_rel(opt, -1.0);
     nlopt_set_ftol_abs(opt, 0.0);
-    nlopt_set_xtol_rel(opt, 1e-19);
-    nlopt_set_xtol_abs1(opt, 1e-19);    
+    nlopt_set_xtol_rel(opt, 1e-25);
+    nlopt_set_xtol_abs1(opt, 1e-25);    
     
     nlopt_set_lower_bounds(opt, lb);
     nlopt_set_upper_bounds(opt, ub);
@@ -236,8 +241,9 @@ int steady_state_load(char * filename, struct SteadyState * ss)
     fread(input, sizeof(char), size, fp);
 
     jsmn_parser p;
-    jsmntok_t t[10000];
-    int r = jsmn_parse(&p, input, strlen(input), t, 10000);
+    jsmn_init(&p);
+    jsmntok_t t[1000];
+    int r = jsmn_parse(&p, input, strlen(input), t, 1000);
 
     if (r < 0) {
         printf("Failed to parse JSON: %d\n", r);
@@ -333,8 +339,9 @@ int steady_state_load_jac(char * filename, real * jac)
     fread(input, sizeof(char), size, fp);
 
     jsmn_parser p;
-    jsmntok_t t[10000];
-    int r = jsmn_parse(&p, input, strlen(input), t, 10000);
+    jsmn_init(&p);    
+    jsmntok_t t[1000];
+    int r = jsmn_parse(&p, input, strlen(input), t, 1000);
 
     if (r < 0) {
         printf("Failed to parse JSON: %d\n", r);

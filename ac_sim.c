@@ -10,7 +10,7 @@
 
 //------------------------------------------
 //------------------------------------------
-//---- Simulate nonlin and linearized  -----
+//---  Simulate Nonlinear Rigid Body  ------
 //------------------------------------------
 //------------------------------------------
 
@@ -40,20 +40,21 @@ void print_code_usage (FILE *, int) __attribute__ ((noreturn));
 void print_code_usage (FILE * stream, int exit_code)
 {
 
-    fprintf(stream, "Usage: %s <vehicle_filename> <initial_condition_filename> options \n\n", program_name);
+    fprintf(stream, "\nUsage: %s <vehicle_filename> <initial_condition_filename> options \n\n", program_name);
     fprintf(stream,
             "Simulate a 6DOF aircraft\n "
 
             "\nSample call\n"
             "./ac_sim pioneer_uav.json ic.json\n"
             
-            "\n\n\n\n\n\n"
+            "\n\n\n"
             " Optional Arguments\n"
             " ------------------\n"
             " -h --help                Display this usage information.\n"
             " -t --time                Length of integration period (in seconds) (default 10)\n"
             " -d --dtsave              Size of timestep to save (default 1e-2)\n"
             /* " --simulate      <file>   Simulate the system and print to file\n" */
+            "\n\n"
         );
     exit (exit_code);
 }
@@ -74,9 +75,10 @@ int main(int argc, char* argv[]){
 
     real dt_save = 1e-2;
     real T = 10.0;
-
+    int num_opts = 0;
     do {
         next_option = getopt_long (argc, argv, short_options, long_options, NULL);
+        num_opts++;
         switch (next_option)
         {
             case 'h': 
@@ -99,13 +101,17 @@ int main(int argc, char* argv[]){
     } while (next_option != -1);
 
 
-    if (argc - optind != 2){ //two non-optional argument
-        fprintf(stderr, "%d\n", argc-optind);
-        fprintf(stderr, "Incorrect input arguments. Vehicle and initial condition files are required \n");
+    if (argc - optind != 2){ 
+        fprintf(stderr, "Called as: %s ", argv[0]);
+        for (size_t ii = 1; ii < argc; ii++){
+            fprintf(stderr, " %s ", argv[ii]);
+        }
+        fprintf(stderr, "\n");
         fprintf(stderr, "\n\n\n");
-        print_code_usage (stderr, 0);
-    }
 
+        print_code_usage (stderr, 0);        
+    }
+    
     // Name of the vehicle file
     char * ac_filename = argv[optind];
     char * ic_filename = argv[optind+1];
@@ -113,12 +119,24 @@ int main(int argc, char* argv[]){
     printf("Aircraft filename = %s\n", ac_filename);
     printf("Initial condition filename = %s\n", ic_filename);    
 
-    
+    real ic[12];
+    real control_fixed[4];
+
+    int ret = load_ic(ic_filename, ic, control_fixed);
+    if (ret == 1){
+        fprintf(stderr, "Could not load initial condition\n");
+        return 1;
+    }
+
     struct Aircraft aircraft;
-    aircraft_load(&aircraft, ac_filename);
+    ret = aircraft_load(&aircraft, ac_filename);
+    if (ret == 1){
+        fprintf(stderr, "Could not load aircraft file\n");
+        return 1;
+    }
     
     fprintf(stdout, "========================================================\n");
-    fprintf(stdout, "      Simulating Nonlinear Dynamics at Steady State     \n");
+    fprintf(stdout, "             Simulating Nonlinear Dynamics              \n");
     fprintf(stdout, "========================================================\n");
 
 
@@ -126,10 +144,8 @@ int main(int argc, char* argv[]){
     printf("Time = %3.4E\n", T);
     printf("save_time = %3.4E\n", dt_save);
     printf("nsteps = %zu\n", nsteps );
-    real ic[12];
-    real control_fixed[4];
-
-    load_ic(ic_filename, ic, control_fixed);
+    
+    
     struct Trajectory * traj = flight_sim(ic, control_fixed, &aircraft, dt_save, nsteps);
 
     char filename[256];
@@ -143,7 +159,7 @@ int main(int argc, char* argv[]){
     }
     fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s\n",
             "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw");
-    trajectory_print(traj, fp, 10);
+    trajectory_print(traj, fp, 20);
 
     trajectory_free(traj); traj = NULL;
     fclose(fp);
@@ -182,7 +198,8 @@ struct Trajectory * flight_sim(real * ic, real * control_use, struct Aircraft * 
     /* double dtmax = dt_save; */
     /* double tol = 1e-14; */
 
-    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_lin_forces, ac, controller,
+    struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_lin_forces, ac,
+                                                           controller,
                                                            control_use);
     integrator_set_type(ode, "rk4");
     integrator_set_dt(ode, 1e-4);
@@ -232,16 +249,20 @@ int load_ic(char * filename, real * ic, real * ic_control)
 
     /* printf("size = %zu\n", size); */
     char* input = malloc(size * sizeof(char));
-
+    
     rewind(fp);
     fread(input, sizeof(char), size, fp);
 
+    /* printf("input = %s\n", input); */
+    
     jsmn_parser p;
-    jsmntok_t t[10000];
-    int r = jsmn_parse(&p, input, strlen(input), t, 10000);
+    jsmntok_t t[256];
+    jsmn_init(&p);
+    int r = jsmn_parse(&p, input, strlen(input), t, 256);
 
     if (r < 0) {
         printf("Failed to parse JSON: %d\n", r);
+        printf("input = %s\n", input);
         return 1;
     }
 
@@ -322,7 +343,7 @@ int load_ic(char * filename, real * ic, real * ic_control)
     }
     
     fclose(fp);
-    free(input); 
+    free(input);  input = NULL;
 
     return 0;
 }

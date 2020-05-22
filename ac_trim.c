@@ -36,7 +36,7 @@ void print_code_usage (FILE *, int) __attribute__ ((noreturn));
 void print_code_usage (FILE * stream, int exit_code)
 {
 
-    fprintf(stream, "Usage: %s <filename> options \n\n", program_name);
+    fprintf(stream, "\nUsage: %s <filename> options \n\n", program_name);
     fprintf(stream,
             "This script trims a six degree of freedom aircraft model to a target speed, climb-rate, and yaw-rate. The script can also return the linear system obtained around the trim condition. Results are printed to the screen by default. However, the trim condition can be written to a json file by specifying an output filename\n "
             "\n\n\n\n\n\n"
@@ -53,7 +53,7 @@ void print_code_usage (FILE * stream, int exit_code)
             " -t --threshold  <val>    Threshold value for setting states to zero default 1e-10.\n"
             " -o --output     <file>   Filename for json to output.\n"
             " --linearize              Return linear system\n"
-            /* " --simulate      <file>   Simulate the system and print to file\n" */
+            "\n\n"
         );
     exit (exit_code);
 }
@@ -70,7 +70,6 @@ int main(int argc, char* argv[]){
         { "threshold"  , 1, NULL, 't' },
         { "output"  , 1, NULL, 'o' },
         { "linearize"  , 0, NULL, 'l' },
-        /* { "simulate"   , 1, NULL, 1 },         */
         /* { "verbose"    , 1, NULL, 'v' }, */
         { NULL         , 0, NULL, 0   }
     };
@@ -122,16 +121,25 @@ int main(int argc, char* argv[]){
 
     } while (next_option != -1);
 
-    if (argc - optind != 1){ // one non-optional argument
-        fprintf(stderr, "Incorrect input arguments. Vehicle file is required \n");
+
+    if (argc - optind != 1){ //three non-optional argument
+        fprintf(stderr, "Called as: %s ", argv[0]);
+        for (size_t ii = 1; ii < argc; ii++){
+            fprintf(stderr, " %s ", argv[ii]);
+        }
+        fprintf(stderr, "\n");
         fprintf(stderr, "\n\n\n");
-        print_code_usage (stderr, 0);
-    }
+        print_code_usage (stderr, 0);        
+    }    
 
     // Name of the vehicle file
     char * filename = argv[optind];
     struct Aircraft aircraft;
-    aircraft_load(&aircraft, filename);
+    int ret = aircraft_load(&aircraft, filename);
+    if (ret == 1){
+        fprintf(stderr, "Could not load aircraft file\n");
+        return 1;
+    }    
     
     struct TrimSpec trim_spec;
     trim_spec.z_dot = -climb_rate;
