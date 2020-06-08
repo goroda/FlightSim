@@ -162,6 +162,45 @@ nsteps = 1000
 Saving simulation to examples/example_ic.json.run
 ```
 
+The simulation file is organized as follows:
+* The first row are headers indicating what time/state/control the column corresponds to
+* The next rows are the perturbed states
+* The first column is the time
+
+
+### Linearized aircraft simulation
+
+We can also simulate a linearized aircraft via the script called <kbd> ac_sim_lin </kbd>. This script simulates an aircraft around a specified trim condition for a given initial condition. To see what the script does you can give the help flag <kbd> ./ac_sim_lin -h </kbd> This script requires the specification of *both* a trim condition and an initial condition in addition to a vehicle file. A reference initial condition is provided [examples/example_ic.json](examples/example_ic.json). The trim condition is obtained as an output to the <kbd> ./ac_trim </kbd> with the <kbd> -o </kbd> flag specified. 
+
+An example execution that simulates a linearized version of an aircraft for 100 seconds and saves every 0.1 seconds is shown below. The resulting file has the same name as the initial condition, with an addition ".run" extension.
+
+```shell
+$ ./ac_sim_lin vehicles/pioneer_uav.json trim.json examples/example_ic.json -t 100 -d 0.1 
+Aircraft filename = vehicles/pioneer_uav.json
+Trim condition filename = trim.json
+Initial condition filename = examples/example_ic.json
+Loading initial condition
+Loading trim condition
+Loading A and B matrices
+Loading aircraft
+========================================================
+     Simulating Linearized Dynamics at Steady State     
+========================================================
+Time = 1.0000E+02
+save_time = 1.0000E-01
+nsteps = 1000
+Saving simulation to examples/example_ic.json.run
+```
+
+The simulation file is organized as follows:
+* The first row are headers indicating what state/control the column corresponds to
+* The second row is the steady-state condition around which the linearization was performed
+* The next rows are the perturbed states
+* The first column is the time
+
+To obtain un-perturbed states, you will have to add the perturbed states to the steady-state condition. Note that this addition only makes sense for the "U, V, W, P, Q, R, Roll, Pitch" conditions --- since these are fixed to be steady state.
+
+
 
 ## Acknowledgements
 

@@ -10,3 +10,4 @@ check_grad
 test.json
 example_ic.json.run
 examples/*
+trim.json
