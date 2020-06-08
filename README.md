@@ -23,6 +23,10 @@ This command will compile three scripts
 
 Currently, this code implements a 6DOF rigid body model under no wind conditions. Linear aerodynamic coefficient models are used to calculate the forces and moments.
 
+The simulations currently use a fixed control. Implementation of control algorithms is future work.
+
+
+
 ## Example Usage
 
 There are several analysis scripts available. Here we describe their usage
@@ -198,7 +202,7 @@ The simulation file is organized as follows:
 * The next rows are the perturbed states
 * The first column is the time
 
-To obtain un-perturbed states, you will have to add the perturbed states to the steady-state condition. Note that this addition only makes sense for the "U, V, W, P, Q, R, Roll, Pitch" conditions --- since these are fixed to be steady state.
+To obtain un-perturbed states, you will have to add the perturbed states to the steady-state condition. Note that this addition only makes sense for the "U, V, W, P, Q, R, Roll, Pitch" variables --- since these states are fixed in steady state.
 
 
 
