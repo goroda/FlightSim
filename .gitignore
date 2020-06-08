@@ -9,3 +9,4 @@ check_grad
 *.dat
 test.json
 example_ic.json.run
+examples/*

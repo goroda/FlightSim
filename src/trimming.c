@@ -102,7 +102,6 @@ int trimmer(struct TrimSpec * data, struct SteadyState * ss){
     
     x[1] = 0.0; // initial condition V
     x[11] = 10; // initial condition thrust
-
     
     
     // run without bounds
@@ -356,27 +355,31 @@ int steady_state_load_jac(char * filename, real * jac)
 
     /* Loop over all keys of the root object */
     for (size_t i = 1; i < r; i++) {
-        /* printf("i = %zu, r = %d \n", i, r); */
+        /* printf("i = %zu, r = %d, \n", i, r); */
         
         if (jsoneq(input, &t[i], "A") == 0) {
+            /* printf("onA = \n"); */
+
             if (t[i+1].type != JSMN_ARRAY) {
                 continue;
             }
+
             for (size_t kk = 0; kk < 144; kk++){
                 jsmntok_t * aa = &t[i + kk + 2];
                 jac[kk] = atof(input + aa->start);
             }
-            i += t[i + 1].size + 1;        
+            i += t[i + 1].size + 1;
         }
-        else if (jsoneq(input, &t[i], "A") == 0) {
+        else if (jsoneq(input, &t[i], "B") == 0) {
+            /* printf("onB = \n");             */
             if (t[i+1].type != JSMN_ARRAY) {
                 continue;
             }
             for (size_t kk = 144; kk < 144+48; kk++){
-                jsmntok_t * aa = &t[i + kk + 2];
+                jsmntok_t * aa = &t[i + kk-144 + 2];
                 jac[kk] = atof(input + aa->start);
             }
-            i += t[i + 1].size + 1;        
+            i += t[i + 1].size + 1;
         }
 
     }

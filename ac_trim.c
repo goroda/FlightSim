@@ -270,7 +270,7 @@ int steady_state_print_to_json(FILE * fp, const struct SteadyState * ss, const r
     fprintf(fp, "\"bank_angle\":%3.15f,\n",          ss->bank_angle);
 
     if (jac != NULL){
-        fprintf(fp, "\"A:\"[");
+        fprintf(fp, "\"A\":[");
         for (size_t ii = 0; ii < 143; ii++){ // A matrix column order followed by B matrix column order
             fprintf(fp, "%3.15f", jac[ii]);
             fprintf(fp, ",");

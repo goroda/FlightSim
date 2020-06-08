@@ -31,7 +31,7 @@
 
 
 int load_ic(char * filename, real * ic, real * ic_control);
-struct Trajectory * flight_sim(real * ic, real * control_fixed, const struct SteadyState * ss,
+struct Trajectory * flight_sim(real * ic, real * ic_ss, real * control_ss, real * control_fixed,
                                struct Aircraft * ac, double dt_save, size_t nsteps, real * AB);
 
 
@@ -113,12 +113,13 @@ int main(int argc, char* argv[]){
 
     // Name of the vehicle file
     char * ac_filename = argv[optind];
-    char * ic_filename = argv[optind+1];
-    char * trim_filename = argv[optind+2];
-
+    char * trim_filename = argv[optind+1];    
+    char * ic_filename = argv[optind+2];
+    
     printf("Aircraft filename = %s\n", ac_filename);
+    printf("Trim condition filename = %s\n", trim_filename); 
     printf("Initial condition filename = %s\n", ic_filename);
-    printf("Trim condition filename = %s\n", trim_filename);        
+
 
     real ic[12];
     real control_fixed[4];
@@ -145,7 +146,6 @@ int main(int argc, char* argv[]){
         fprintf(stderr, "Could not load linearized dynamics from trim condition\n");
         return 1;
     }    
-
     
     struct Aircraft aircraft;
     printf("Loading aircraft\n");
@@ -163,9 +163,12 @@ int main(int argc, char* argv[]){
     printf("Time = %3.4E\n", T);
     printf("save_time = %3.4E\n", dt_save);
     printf("nsteps = %zu\n", nsteps );
-    
-    struct Trajectory * traj = flight_sim(ic, control_fixed, &ss, &aircraft, dt_save,
-                                          nsteps, jac);
+
+    real ic_ss[12];
+    real control_ss[4];
+    steady_state_set_vec(&ss, ic[0], ic[1], ic[2], ic[11], ic_ss, control_ss);    
+    struct Trajectory * traj = flight_sim(ic, ic_ss, control_ss, control_fixed,
+                                          &aircraft, dt_save, nsteps, jac);
 
     char filename[256];
     sprintf(filename, "%s.run", ic_filename);
@@ -178,6 +181,10 @@ int main(int argc, char* argv[]){
     }
     fprintf(fp, "%-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s %-11s \n",
             "t", "x", "y", "z", "U", "V", "W", "P", "Q", "R", "Roll", "Pitch", "Yaw", "Elevator", "Aileron", "Rudder", "Thrust");
+    fprintf(fp, "%-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E %-13.15E \n",
+            0.0, ic_ss[0], ic_ss[1], ic_ss[2], ic_ss[3], ic_ss[4], ic_ss[5], ic_ss[6], ic_ss[7], ic_ss[8], ic_ss[9], ic_ss[10], ic_ss[11],
+            control_ss[0], control_ss[1], control_ss[2], control_ss[3]);
+
     trajectory_print(traj, fp, 20);
 
     trajectory_free(traj); traj = NULL;
@@ -203,7 +210,7 @@ int controller(double time, const double * x, double * u, void * arg)
     return 0;
 }
 
-struct Trajectory * flight_sim(real * ic, real * control_fixed, const struct SteadyState * ss,
+struct Trajectory * flight_sim(real * ic, real * ic_ss, real * control_ss, real * control_fixed,
                                struct Aircraft * ac, double dt_save, size_t nsteps, real * AB)
 {
     /* double dtmin = 1e-16; */
@@ -212,21 +219,30 @@ struct Trajectory * flight_sim(real * ic, real * control_fixed, const struct Ste
     
 
     double start_time = 0.0;
-    real ic_ss[12];
-    real control_ss[4];
-    steady_state_set_vec(ss, ic[0], ic[1], ic[2], ic[11], ic_ss, control_ss);
+    real ic_lin[12];
     for (size_t ii = 0; ii < 12; ii++){
-        ic_ss[ii] = ic[ii] - ic_ss[ii];
+        ic_lin[ii] = ic[ii] - ic_ss[ii];
+        /* printf("ic_lin[%zu] = %3.5E\n", ii, ic_lin[ii]); */
     }
+    real control_lin[4];
     for (size_t jj = 0; jj < 4; jj++){
-        control_ss[jj] = control_fixed[jj] - control_ss[jj];
+        control_lin[jj] = control_fixed[jj] - control_ss[jj];
+        /* printf("control_lin[%zu] = %3.5E\n", jj, control_lin[jj]); */
     }
 
+    /* for (size_t ii = 0; ii < 12; ii++){ */
+    /*     for (size_t jj = 0; jj < 12; jj++){ */
+    /*         fprintf(stdout, "%7.3E ", AB[jj*12 + ii]); */
+    /*     } */
+    /*     fprintf(stdout, "\n"); */
+    /* } */
+    /* exit(1); */
+    
     real control[4];
-    controller(0.0, ic_ss, control, control_ss);
+    controller(0.0, ic_ss, control, control_lin);
 
     struct Integrator * ode = integrator_create_controlled(12, 4, rigid_body_linearized, AB,
-                                                           controller, control_ss);
+                                                           controller, control_lin);
     integrator_set_type(ode, "rk4");
     integrator_set_dt(ode, 1e-4);
     /* integrator_set_type(ode,"rkf45");     */
@@ -235,7 +251,7 @@ struct Trajectory * flight_sim(real * ic, real * control_fixed, const struct Ste
     
     
     struct Trajectory * traj = NULL;
-    int res = trajectory_add(&traj, 12, 4, start_time, ic_ss, control);
+    int res = trajectory_add(&traj, 12, 4, start_time, ic_lin, control_lin);
 
     double dt = dt_save;
     for (size_t ii = 0; ii < nsteps; ii++){
