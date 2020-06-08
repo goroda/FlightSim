@@ -34,7 +34,7 @@ int check_grad_tdyn(void);
 int check_grad_rigid_body_dyn(void);
 int check_grad_trimmer(void);
 
-#define G 32.17
+#define GRAVITY 32.17
 
 
 inline real steady_state_get_U(const struct SteadyState * ss){return ss->UVW.v1;}
@@ -545,9 +545,9 @@ int tdyn(const struct EulerAngles * ea, const struct AeroAngles * aero,
     real cphit = aircraft_get_cphit(ac);
     real sphit = aircraft_get_sphit(ac);
     
-    rates->v1 = V * R - W * Q - ea->sp * G - cb * ca * D / m + sa * L / m + cphit * Ft / m;
-    rates->v2 = -U * R + W * P + ea->sr * ea->cp * G - sb * D / m;
-    rates->v3 = U * Q - V*P + ea->cr * ea->cp * G - cb * sa * D / m - ca * L / m - sphit * Ft / m;
+    rates->v1 = V * R - W * Q - ea->sp * GRAVITY - cb * ca * D / m + sa * L / m + cphit * Ft / m;
+    rates->v2 = -U * R + W * P + ea->sr * ea->cp * GRAVITY - sb * D / m;
+    rates->v3 = U * Q - V*P + ea->cr * ea->cp * GRAVITY - cb * sa * D / m - ca * L / m - sphit * Ft / m;
 
     return 0;
 }
@@ -613,7 +613,7 @@ int tdyn_g(const struct EulerAngles * ea, const struct AeroAngles * aero, const 
     real cphit = aircraft_get_cphit(ac);
     real sphit = aircraft_get_sphit(ac);
     
-    rates->v1 = V * R - W * Q - ea->sp * G - cb_ca * D / m + sa * L / m + cphit * Ft / m;
+    rates->v1 = V * R - W * Q - ea->sp * GRAVITY - cb_ca * D / m + sa * L / m + cphit * Ft / m;
 
     sg[0].U_g = (1.0/m) * (-cb_ca_g_u * D - cb_ca * DEL_g[0].U_g + sa_g_u * L + sa * DEL_g[2].U_g);
     sg[0].V_g = R + (1.0/m) * (-cb_ca_g_v * D - cb_ca * DEL_g[0].V_g + sa_g_v * L + sa * DEL_g[2].V_g);
@@ -622,7 +622,7 @@ int tdyn_g(const struct EulerAngles * ea, const struct AeroAngles * aero, const 
     sg[0].Q_g = -W + (1.0/m) * ( - cb_ca * DEL_g[0].Q_g + sa * DEL_g[2].Q_g);
     sg[0].R_g = V + (1.0/m) * ( - cb_ca * DEL_g[0].R_g + sa * DEL_g[2].R_g);
     sg[0].Roll_g = (1.0/m) * (- cb_ca * DEL_g[0].Roll_g + sa * DEL_g[2].Roll_g);
-    sg[0].Pitch_g = -ea->cp * G + (1.0/m) * (- cb_ca * DEL_g[0].Pitch_g + sa * DEL_g[2].Pitch_g);
+    sg[0].Pitch_g = -ea->cp * GRAVITY + (1.0/m) * (- cb_ca * DEL_g[0].Pitch_g + sa * DEL_g[2].Pitch_g);
     sg[0].Yaw_g = (1.0/m) * (- cb_ca * DEL_g[0].Yaw_g + sa * DEL_g[2].Yaw_g);
 
     cg[0].elev_g = (1.0/m) * ( - cb_ca * DEL_cg[0].elev_g + sa * DEL_cg[2].elev_g);
@@ -631,7 +631,7 @@ int tdyn_g(const struct EulerAngles * ea, const struct AeroAngles * aero, const 
     cg[0].rudder_g = (1.0/m) * ( - cb_ca * DEL_cg[0].rudder_g + sa * DEL_cg[2].rudder_g);
 
         
-    rates->v2 = -U * R + W * P + ea->sr_cp * G - sb * D / m;
+    rates->v2 = -U * R + W * P + ea->sr_cp * GRAVITY - sb * D / m;
 
     sg[1].U_g = -R + (1.0/m) * (-sb_g_u * D - sb * DEL_g[0].U_g);
     sg[1].V_g = (1.0/m) * (-sb_g_v * D - sb * DEL_g[0].V_g);
@@ -639,8 +639,8 @@ int tdyn_g(const struct EulerAngles * ea, const struct AeroAngles * aero, const 
     sg[1].P_g = W + (1.0/m) * (- sb * DEL_g[0].P_g);
     sg[1].Q_g = (1.0/m) * (- sb * DEL_g[0].Q_g);
     sg[1].R_g = -U + (1.0/m) * (- sb * DEL_g[0].R_g);
-    sg[1].Roll_g = ea->sr_cp_g_r * G + (1.0/m) * (- sb * DEL_g[0].Roll_g);
-    sg[1].Pitch_g = ea->sr_cp_g_p * G + (1.0/m) * (- sb * DEL_g[0].Pitch_g);
+    sg[1].Roll_g = ea->sr_cp_g_r * GRAVITY + (1.0/m) * (- sb * DEL_g[0].Roll_g);
+    sg[1].Pitch_g = ea->sr_cp_g_p * GRAVITY + (1.0/m) * (- sb * DEL_g[0].Pitch_g);
     sg[1].Yaw_g = (1.0/m) * (- sb * DEL_g[0].Yaw_g);    
 
     cg[1].elev_g = (1.0/m) * (- sb * DEL_cg[0].elev_g);
@@ -648,7 +648,7 @@ int tdyn_g(const struct EulerAngles * ea, const struct AeroAngles * aero, const 
     cg[1].aileron_g = (1.0/m) * (- sb * DEL_cg[0].aileron_g);
     cg[1].rudder_g = (1.0/m) * (- sb * DEL_cg[0].rudder_g);
 
-    rates->v3 = U * Q - V*P + ea->cr_cp * G - cb_sa * D / m - ca * L / m - sphit * Ft / m;
+    rates->v3 = U * Q - V*P + ea->cr_cp * GRAVITY - cb_sa * D / m - ca * L / m - sphit * Ft / m;
 
     sg[2].U_g = Q + (1/m) * (-cb_sa * DEL_g[0].U_g - cb_sa_g_u * D - ca * DEL_g[2].U_g - ca_g_u * L);
     sg[2].V_g = -P + (1/m) * (-cb_sa * DEL_g[0].V_g - cb_sa_g_v * D - ca * DEL_g[2].V_g - ca_g_v * L);
@@ -656,8 +656,8 @@ int tdyn_g(const struct EulerAngles * ea, const struct AeroAngles * aero, const 
     sg[2].P_g = -V + (1/m) * (-cb_sa * DEL_g[0].P_g  - ca * DEL_g[2].P_g);
     sg[2].Q_g = U + (1/m) * (-cb_sa * DEL_g[0].Q_g  - ca * DEL_g[2].Q_g);
     sg[2].R_g = (1/m) * (-cb_sa * DEL_g[0].R_g  - ca * DEL_g[2].R_g);
-    sg[2].Roll_g = ea->cr_cp_g_r * G + (1/m) * (-cb_sa * DEL_g[0].Roll_g  - ca * DEL_g[2].Roll_g);
-    sg[2].Pitch_g = ea->cr_cp_g_p * G + (1/m) * (-cb_sa * DEL_g[0].Pitch_g  - ca * DEL_g[2].Pitch_g);
+    sg[2].Roll_g = ea->cr_cp_g_r * GRAVITY + (1/m) * (-cb_sa * DEL_g[0].Roll_g  - ca * DEL_g[2].Roll_g);
+    sg[2].Pitch_g = ea->cr_cp_g_p * GRAVITY + (1/m) * (-cb_sa * DEL_g[0].Pitch_g  - ca * DEL_g[2].Pitch_g);
     sg[2].Yaw_g = (1/m) * (-cb_sa * DEL_g[0].Yaw_g  - ca * DEL_g[2].Yaw_g);    
 
     cg[2].elev_g = (1/m) * (-cb_sa * DEL_cg[0].elev_g  - ca * DEL_cg[2].elev_g);
