@@ -27,7 +27,7 @@ Currently, this code implements a 6DOF rigid body model under no wind conditions
 
 There are several analysis scripts available. Here we describe their usage
 
-### Aircrafit trimming
+### Aircraft trimming
 Trimming is performed via the script called <kbd> ac_trim </kbd>. This script allows for computing the trim conditions for steady trimmed flight. To see what the script does you can give the help flag <kbd> ./ac_trim -h </kbd> The 
 
 Here is sample output for steady flight at a speed of 120 ft/s with a 10 ft/s straight climb rate. The script also performs linearization around the trim condition because the <kbd> --linearize </kbd> flag is specified. Finally it saves both the trim condition and the linearization (A and B) matrices to the the output file <kbd> trim_conditions.json </kbd> This file can then be read by the other scripts
@@ -118,6 +118,50 @@ Elev.     Ail.      Rud.      Thrust
 0.000     0.000     0.000     0.000     
 0.000     0.000     0.000     0.000  
 ```
+
+
+### Aircraft simulation
+Simulation is performed via the script called <kbd> ac_sim </kbd>. This script simulates an aircraft for a given initial condition. To see what the script does you can give the help flag <kbd> ./ac_sim -h </kbd> This script requires the specification an initial condition in addition to a vehicle file. A reference initial condition is provided [examples/example_ic.json](examples/example_ic.json). This initial condition is provided below.
+
+
+``` json
+{
+    "x":0,
+    "y":0,
+    "z":0,
+    "U":119.556604117257407,
+    "V":0.000000000000000,
+    "W":10.306231704642098,
+    "P":0.000000000000000,
+    "Q":-0.000000001679369,
+    "R":0.000000000000000,
+    "roll":0.000000000000000,
+    "pitch":0.085991201830814,
+    "yaw":0.0,
+    "elevator":0.006646961692774,
+    "aileron":0.000000000000000,
+    "rudder":0.000000000000000,
+    "thrust":48.877175456058318,    
+}
+```
+
+An example execution that simulates an aircraft for 100 seconds and saves every 0.1 seconds is shown below. The resulting file has the same name as the initial condition, with an addition ".run" extension.
+
+
+```shell
+$ ./ac_sim vehicles/pioneer_uav.json examples/example_ic.json -t 100 -d 0.1 
+
+Aircraft filename = vehicles/pioneer_uav.json
+Initial condition filename = examples/example_ic.json
+========================================================
+             Simulating Nonlinear Dynamics              
+========================================================
+Time = 1.0000E+02
+save_time = 1.0000E-01
+nsteps = 1000
+Saving simulation to examples/example_ic.json.run
+```
+
 
 ## Acknowledgements
 
